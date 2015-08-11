@@ -37,6 +37,7 @@ $string['livecalc'] = 'Live calculations: ';
 $string['ttitle'] = 'Category/Course';
 $string['tsize'] = 'Size';
 $string['tddown'] = 'Drill down this category';
+$string['tlink'] = 'URL';
 
 $string['userfilesize'] = 'User file size';
 $string['totalfilesize'] = 'Total file size';
@@ -51,6 +52,8 @@ $string['calcmethodhelp'] = 'If calculated by cron, the report will run at the s
 $string['executeathelp'] = 'Course size calculations start time (for cron calculations). Select time when your Moodle is idle (e.g. in the night).';
 $string['showgranular'] = 'Show granular';
 $string['showgranularhelp'] = 'If enabled, a granular breakdown of files per course will be available with file size details.';
+$string['excludebackups'] = 'Exclude backups';
+$string['excludebackupshelp'] = 'If enabled, an option will be available to exclude backups from course size details.';
 
 
 // Options
@@ -62,6 +65,7 @@ $string['salphas'] = 'A-Z (course shortname)';
 $string['sorder'] = 'Moodle sort order';
 $string['sortdir'] = 'Sort direction: ';
 $string['displaysize'] = 'Display sizes as: ';
+$string['excludebackup'] = 'Exclude backups: ';
 
 // Granular course file breakdown
 $string['granularfilename'] = 'Filename';
@@ -76,3 +80,4 @@ $string['granularlink'] = 'Details';
 // Export
 $string['exporttoexcel'] = 'Export as an Excel file';
 $string['exporttocsv'] = 'Export as a CSV file';
+$string['export'] = 'Export';

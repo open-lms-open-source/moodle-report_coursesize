@@ -9,7 +9,8 @@ function catsize (id) {
                 document.getElementById('icon' + id).innerHTML = '<img src="'+M.cfg.wwwroot + '/report/coursesize/pix/loading_spinner.gif" width="16" height="16">';
             }
             YUI().use('io-base', function(Y, id2){
-                Y.io(M.cfg.wwwroot + '/report/coursesize/callback.php?id='+id+'&sorder='+csize_sortorder+'&sdir='+csize_sortdir+'&display='+csize_displaysize, {
+                Y.io(M.cfg.wwwroot +
+                '/report/coursesize/callback.php?id='+id+'&sorder='+csize_sortorder+'&sdir='+csize_sortdir+'&display='+csize_displaysize+'&excludebackups='+csize_excludebackups, {
                 on: {
                     complete: function(id3, e) {
                         var json = JSON.parse(e.responseText);

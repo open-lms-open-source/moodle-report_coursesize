@@ -30,6 +30,27 @@ require_once(dirname(__file__) . '/locallib.php');
 require_login();
 require_once(dirname(__file__) . '/getoptions.php');
 admin_externalpage_setup('reportcoursesizepage', '', null, '', array('pagelayout'=>'report'));
+
+if (!empty($export)) {
+    require_once($CFG->libdir.'/csvlib.class.php');
+    $csv = new \csv_export_writer();
+    $csv->set_filename('report_coursesize_export');
+    $csv->add_data(array(
+                get_string('ttitle', 'report_coursesize'),
+                get_string('tsize', 'report_coursesize'),
+                get_string('tlink', 'report_coursesize'),
+            ));
+    $data = report_coursesize_export($displaysize, $sortorder, $sortdir, $excludebackups);
+    if (!empty($data)) {
+        foreach ($data as $row) {
+            $csv->add_data((array)$row);
+        }
+    }
+
+    $csv->download_file();
+    exit;
+}
+
 echo $OUTPUT->header();
 
 $config = get_config('report_coursesize');
@@ -46,6 +67,7 @@ echo "
     var csize_sortorder = '{$sortorder}';
     var csize_sortdir = '{$sortdir}';
     var csize_displaysize = '{$displaysize}';
+    var csize_excludebackups = '{$excludebackups}';
 //]]>
 </script>
 ";
@@ -55,7 +77,9 @@ $forminputs = array();
 $forminputs[] = get_string('sortby', 'report_coursesize') . html_writer::select($orderoptions, 'sorder', $sortorder, array());
 $forminputs[] = get_string('sortdir', 'report_coursesize') . html_writer::select($diroptions, 'sdir', $sortdir, array());
 $forminputs[] = get_string('displaysize', 'report_coursesize') . html_writer::select($sizeoptions, 'display', $displaysize, array());
+$forminputs[] = get_string('excludebackup', 'report_coursesize') . html_writer::checkbox("excludebackups", 1, $excludebackups, '');
 $forminputs[] = html_writer::empty_tag('input', array('type' => 'submit', 'name' => 'go', 'value' => get_string('refresh')));
+$forminputs[] = html_writer::empty_tag('input', array('type' => 'submit', 'name' => 'export', 'value' => get_string('export', 'report_coursesize')));
 echo html_writer::start_tag('div', array('style' => 'text-align:center;margin-bottom:10px;'));
 echo html_writer::start_tag('form', array('name' => 'sortoptions', 'method' => 'POST', 'action' => new moodle_url('/report/coursesize/index.php')));
 echo implode('&nbsp;&nbsp;&nbsp;', $forminputs);

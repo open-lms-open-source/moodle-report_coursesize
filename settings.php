@@ -45,3 +45,10 @@ $settings->add(new admin_setting_configcheckbox('report_coursesize/showgranular'
                                                 $description,
                                                 0));
 
+$name = new lang_string('excludebackups', 'report_coursesize');
+$description = new lang_string('excludebackupshelp', 'report_coursesize');
+$settings->add(new admin_setting_configcheckbox('report_coursesize/excludebackups',
+                                                $name,
+                                                $description,
+                                                0));
+

@@ -72,6 +72,11 @@ switch($sortdir) {
         break;
 }
 
+$coursesizetable = 'report_coursesize';
+if ($excludebackups) {
+    $coursesizetable = 'report_coursesize_no_backups';
+}
+
 $sql = '
 SELECT
         ct.id AS catid,
@@ -81,20 +86,21 @@ SELECT
         rc.filesize as filesize
 FROM
         {course_categories} ct
-        LEFT JOIN {report_coursesize} rc ON ct.id = rc.instanceid AND rc.contextlevel = ' . CONTEXT_COURSECAT . '
+        LEFT JOIN {' . $coursesizetable . '} rc ON ct.id = rc.instanceid AND rc.contextlevel = :ctxcc
 WHERE
         ct.parent = :id
-ORDER BY ' . $orderby;
+ORDER BY :order';
 
 $tout = false;
 $totalsize = 0;
-if ($cats = $DB->get_records_sql($sql, array('id' => $id))) {
+$params = array('ctxcc' => CONTEXT_COURSECAT, 'id' => $id, 'order' => $orderby);
+if ($cats = $DB->get_records_sql($sql, $params)) {
 
     if ($config->calcmethod == 'live') {
         // recalculate
         $dosort = false;
         foreach ($cats as $cat) {
-            $newsize = report_coursesize_catcalc($cat->catid);
+            $newsize = report_coursesize_catcalc($cat->catid, $excludebackups);
             if (!$dosort && $cat->filesize != $newsize) {
                 $dosort = true;
             }
@@ -197,20 +203,21 @@ SELECT
         rc.filesize as filesize
 FROM
         {course} c
-        LEFT JOIN {report_coursesize} rc ON c.id = rc.instanceid AND rc.contextlevel = " . CONTEXT_COURSE . "
+        LEFT JOIN {" . $coursesizetable . "} rc ON c.id = rc.instanceid AND rc.contextlevel = :ctxc
 WHERE
         c.category = :id
 ORDER BY
-        $orderby
+        :order
 ";
 
-if ($courses = $DB->get_records_sql($sql, array('id' => $id))) {
+$params = array('ctxc' => CONTEXT_COURSE, 'id' => $id, 'order' => $orderby);
+if ($courses = $DB->get_records_sql($sql, $params)) {
 
     if ($config->calcmethod == 'live') {
         // recalculate
         $dosort = false;
         foreach ($courses as $course) {
-            $newsize = report_coursesize_coursecalc($course->courseid);
+            $newsize = report_coursesize_coursecalc($course->courseid, $excludebackups);
             if (!$dosort && $course->filesize != $newsize) {
                 $dosort = true;
             }
@@ -258,13 +265,13 @@ $out = html_writer::tag('div', $out, array('style' => 'margin-left: 25px;'));
 // we are displaying the main table (Moodle root), so let's print some additional info
 if (!$id) {
     // get user files
-    if ($DB->record_exists('report_coursesize', array('contextlevel' => 0, 'instanceid' => 1))) {
-        $row = $DB->get_record('report_coursesize', array('contextlevel' => 0, 'instanceid' => 1));
+    if ($DB->record_exists($coursesizetable, array('contextlevel' => 0, 'instanceid' => 1))) {
+        $row = $DB->get_record($coursesizetable, array('contextlevel' => 0, 'instanceid' => 1));
         $totalsize += $row->filesize;
         $usersize = $row->filesize;
     } else {
         if ($config->calcmethod == 'live') {
-            $usersize = report_coursesize_usercalc();
+            $usersize = report_coursesize_usercalc($excludebackups);
             $totalsize += $usersize;
         } else {
             $usersize = 0;
@@ -283,12 +290,12 @@ if (!$id) {
     $out .= get_string('totalfilesize', 'report_coursesize') . ': ' . report_coursesize_displaysize($totalsize, $displaysize);
 
     //get and output total unique file size (may differ from $totalsize since Moodle file storage does not duplicate identical files)
-    if ($DB->record_exists('report_coursesize', array('contextlevel' => 0, 'instanceid' => 2))) {
-        $row = $DB->get_record('report_coursesize', array('contextlevel' => 0, 'instanceid' => 2));
+    if ($DB->record_exists($coursesizetable, array('contextlevel' => 0, 'instanceid' => 2))) {
+        $row = $DB->get_record($coursesizetable, array('contextlevel' => 0, 'instanceid' => 2));
         $uniquefilesize = $row->filesize;
     } else {
         if ($config->calcmethod == 'live') {
-            $uniquefilesize = report_coursesize_uniquetotalcalc();
+            $uniquefilesize = report_coursesize_uniquetotalcalc($excludebackups);
         } else {
             $uniquefilesize = 0;
         }

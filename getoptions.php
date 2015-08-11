@@ -30,10 +30,14 @@ defined('MOODLE_INTERNAL') || die('Direct access to this script is forbidden.');
 $sortorderdefault = 'ssize';
 $sortdirdefault = 'desc';
 $displaysizedefault = 'auto';
+$excludebackupsdefault = 0;
+$exportdefault = '';
 
 $sortorder = optional_param('sorder', $sortorderdefault, PARAM_TEXT);
 $sortdir = optional_param('sdir', $sortdirdefault, PARAM_TEXT);
 $displaysize = optional_param('display', $displaysizedefault, PARAM_TEXT);
+$excludebackups = optional_param('excludebackups', $excludebackupsdefault, PARAM_INT);
+$export = optional_param('export', $exportdefault, PARAM_TEXT);
 
 // display options
 $orderoptions = array('ssize' => get_string('ssize', 'report_coursesize'),
