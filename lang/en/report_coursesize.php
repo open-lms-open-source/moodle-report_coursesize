@@ -54,6 +54,8 @@ $string['showgranular'] = 'Show granular';
 $string['showgranularhelp'] = 'If enabled, a granular breakdown of files per course will be available with file size details.';
 $string['excludebackups'] = 'Exclude backups';
 $string['excludebackupshelp'] = 'If enabled, an option will be available to exclude backups from course size details.';
+$string['showcoursecomponents'] = 'Show course components';
+$string['showcoursecomponentshelp'] = 'If enabled, an extra expandable option will be available show component based filesize details.';
 
 
 // Options

@@ -46,5 +46,9 @@ function xmldb_report_coursesize_upgrade($oldversion) {
         }
     }
 
+    if ($oldversion < 2015081400) {
+        $dbman->install_one_table_from_xmldb_file(__DIR__.'/install.xml', 'report_coursesize_components');
+    }
+
     return true;
 }

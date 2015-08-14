@@ -52,3 +52,10 @@ $settings->add(new admin_setting_configcheckbox('report_coursesize/excludebackup
                                                 $description,
                                                 0));
 
+$name = new lang_string('showcoursecomponents', 'report_coursesize');
+$description = new lang_string('showcoursecomponentshelp', 'report_coursesize');
+$settings->add(new admin_setting_configcheckbox('report_coursesize/showcoursecomponents',
+                                                $name,
+                                                $description,
+                                                0));
+

@@ -40,6 +40,7 @@ if (!has_capability('report/coursesize:view', $context)) {
 define('REPORT_COURSESIZE_GRANULAR_COL', 2);
 
 $id = optional_param('id', 0, PARAM_INT); // category id
+$course = optional_param('course', 0, PARAM_INT); // course based data
 
 $config = get_config('report_coursesize');
 
@@ -215,6 +216,7 @@ if ($courses = $DB->get_records_sql($sql, $params)) {
 
     if ($config->calcmethod == 'live') {
         // recalculate
+        report_coursesize_modulecalc();
         $dosort = false;
         foreach ($courses as $course) {
             $newsize = report_coursesize_coursecalc($course->courseid, $excludebackups);
@@ -241,8 +243,14 @@ if ($courses = $DB->get_records_sql($sql, $params)) {
             'href' => $CFG->wwwroot . '/course/view.php?id=' . $course->courseid,
         ));
         $size = report_coursesize_displaysize($course->filesize, $displaysize);
-        $icon = html_writer::empty_tag('img', array('src' => $CFG->wwwroot . '/report/coursesize/pix/empty.gif', 'width' => 16, 'height' => 16));
-        $table->data[] = array($icon, $title, $size);
+        $data = report_coursesize_modulestats($course->courseid, $displaysize, $excludebackups);
+        if (!empty($data)) {
+            $icon = html_writer::empty_tag('img', array('src' => $CFG->wwwroot . '/report/coursesize/pix/switch_plus.gif', 'width' => 16, 'height' => 16, 'onclick' => "coursesize({$course->courseid})", 'title' => get_string('tddown', 'report_coursesize'), 'style' => 'cursor:pointer'));
+        } else {
+            $icon = html_writer::empty_tag('img', array('src' => $CFG->wwwroot . '/report/coursesize/pix/empty.gif', 'width' => 16, 'height' => 16));
+        }
+        $divicon = html_writer::tag('div', $icon, array('id' => 'iconcourse'.$course->courseid));
+        $table->data[] = array($divicon, $title, $size);
         if (!empty($config->showgranular)) {
             $granularicon = $OUTPUT->pix_icon('i/report', '', 'moodle', array(
                 'alt' => get_string('granularlink', 'report_coursesize'),
@@ -256,6 +264,20 @@ if ($courses = $DB->get_records_sql($sql, $params)) {
             array_splice($table->size, REPORT_COURSESIZE_GRANULAR_COL, 0, '22px');
         }
         $out .= html_writer::table($table);
+        if (!empty($data)) {
+            $out .= html_writer::start_tag('div', array('style' => "display:none", 'id' => 'course'.$course->courseid));
+            $table = new html_table();
+            $table->align = array('left', 'left', 'right');
+            $table->width = '100%';
+            $table->size = array('22px', '', '130px');
+            $table->attributes = array('style' => 'margin-bottom: 0;');
+            foreach ($data as $row) {
+                $table->data[] = $row;
+            }
+            $out .= html_writer::table($table);
+            $out .= html_writer::end_tag('div');
+        }
+
         $totalsize += $course->filesize;
     }
 }

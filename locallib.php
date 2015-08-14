@@ -515,6 +515,32 @@ function report_coursesize_storecacherow($contextlevel, $instanceid, $filesize, 
 }
 
 //
+// checks if component record exists in cache table and then inserts or updates
+//
+function report_coursesize_storecomponentcacherow($component, $courseid, $filesize) {
+    global $DB;
+    $r = new stdClass();
+    $r->component = $component;
+    $r->courseid = $courseid;
+    $r->filesize = $filesize;
+    if (strval($r->filesize) == '') {
+        $r->filesize = 0;
+    }
+    $table = 'report_coursesize_components';
+    if ($er = $DB->get_record($table, array('component' => $r->component, 'courseid' => $r->courseid))) {
+        if (strval($er->filesize) != $r->filesize) {
+            $r->id = $er->id;
+            if (!($DB->update_record($table, $r))) {
+                return false;
+            }
+        }
+    } else if (!($DB->insert_record($table, $r))) {
+        return false;
+    }
+    return true;
+}
+
+//
 // formats file size for display
 //
 function report_coursesize_displaysize($size, $type='auto') {
@@ -719,4 +745,49 @@ function report_coursesize_export($displaysize, $sortorder, $sortdir, $excludeba
     }
 
     return $output;
+}
+
+function report_coursesize_modulecalc () {
+    global $DB;
+    
+    $config = get_config('report_coursesize');
+    if (!$config->showcoursecomponents) {
+        return false;
+    }
+
+    $sql = "SELECT c.id || '_' || f.component as blah, cm.course as id, f.component, sum(f.filesize) as filesize
+              FROM {course_modules} cm
+              JOIN {context} cx ON cx.contextlevel = :ctxm AND cx.instanceid = cm.id
+              JOIN {files} f ON f.contextid = cx.id
+             GROUP BY cm.course, f.component";
+    $params = array('ctxm' => CONTEXT_MODULE);
+    $data = $DB->get_records_sql($sql, $params);
+    foreach ($data as $row) {
+        report_coursesize_storecomponentcacherow($row->component, $row->id, $row->filesize);
+    }
+
+    return true;
+}
+
+function report_coursesize_modulestats($id, $displaysize) {
+    global $DB;
+
+    $data = array();
+
+    $config = get_config('report_coursesize');
+    if (!$config->showcoursecomponents) {
+        return $data;
+    }
+
+    $sql = 'SELECT *
+              FROM {report_coursesize_components} rcc
+             WHERE courseid = :id';
+    $params = array('id' => $id);
+    if ($modules = $DB->get_records_sql($sql, $params)) {
+        foreach ($modules as $module) {
+            $size = report_coursesize_displaysize($module->filesize, $displaysize);
+            $data[] = array('', $module->component, $size);
+        }
+    }
+    return $data;
 }
