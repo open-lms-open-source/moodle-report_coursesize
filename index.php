@@ -77,7 +77,9 @@ $forminputs = array();
 $forminputs[] = get_string('sortby', 'report_coursesize') . html_writer::select($orderoptions, 'sorder', $sortorder, array());
 $forminputs[] = get_string('sortdir', 'report_coursesize') . html_writer::select($diroptions, 'sdir', $sortdir, array());
 $forminputs[] = get_string('displaysize', 'report_coursesize') . html_writer::select($sizeoptions, 'display', $displaysize, array());
-$forminputs[] = get_string('excludebackup', 'report_coursesize') . html_writer::checkbox("excludebackups", 1, $excludebackups, '');
+if (!empty($config->excludebackups)) {
+    $forminputs[] = get_string('excludebackup', 'report_coursesize') . html_writer::checkbox("excludebackups", 1, $excludebackups, '');
+}
 $forminputs[] = html_writer::empty_tag('input', array('type' => 'submit', 'name' => 'go', 'value' => get_string('refresh')));
 $forminputs[] = html_writer::empty_tag('input', array('type' => 'submit', 'name' => 'export', 'value' => get_string('export', 'report_coursesize')));
 echo html_writer::start_tag('div', array('style' => 'text-align:center;margin-bottom:10px;'));
