@@ -31,29 +31,39 @@ require_login();
 require_once(dirname(__file__) . '/getoptions.php');
 admin_externalpage_setup('reportcoursesizepage', '', null, '', array('pagelayout'=>'report'));
 
+$config = get_config('report_coursesize');
 if (!empty($export)) {
-    require_once($CFG->libdir.'/csvlib.class.php');
-    $csv = new \csv_export_writer();
-    $csv->set_filename('report_coursesize_export');
-    $csv->add_data(array(
-                get_string('ttitle', 'report_coursesize'),
-                get_string('tsize', 'report_coursesize'),
-                get_string('tlink', 'report_coursesize'),
-            ));
-    $data = report_coursesize_export($displaysize, $sortorder, $sortdir, $excludebackups);
-    if (!empty($data)) {
-        foreach ($data as $row) {
-            $csv->add_data((array)$row);
+    $data = report_coursesize_export($displaysize, $sortorder, $sortdir);
+    $head = array(get_string('ttitle', 'report_coursesize'));
+    if (!empty($config->excludebackups)) {
+        $head[] = get_string('ttsize', 'report_coursesize');
+        $head[] = get_string('tcsize', 'report_coursesize');
+        $head[] = get_string('tbsize', 'report_coursesize');
+    } else {
+        $head[] = get_string('tsize', 'report_coursesize');
+    }
+    require_once $CFG->libdir . '/excellib.class.php';
+    $workbook = new MoodleExcelWorkbook('-');
+    $filename = 'report_coursesize_export';
+    $filename .= clean_filename('-' . gmdate("Ymd_Hi")) . '.xlsx';
+    $workbook->send($filename);
+    $worksheet = $workbook->add_worksheet(get_string('pluginname', 'report_coursesize'));
+    foreach(array_merge(array($head), $data) as $r => $row) {
+        foreach ($row as $c => $cell) {
+            if ($c == 5 && $r) {
+                // For the bytes column.
+                $worksheet->write_number($r, $c, (int)preg_replace('/[^\d]/', '', $cell));
+                continue;
+            }
+            $worksheet->write($r, $c, $cell);
         }
     }
-
-    $csv->download_file();
+    $workbook->close();
     exit;
 }
 
 echo $OUTPUT->header();
 
-$config = get_config('report_coursesize');
 $lastruntime = (!isset($config->lastruntime)) ? get_string('nevercap', 'report_coursesize') : date('r', $config->lastruntime);
 $livecalcenabled = (isset($config->calcmethod) && $config->calcmethod == 'live') ? get_string('enabledcap', 'report_coursesize') : get_string('disabledcap', 'report_coursesize');
 

@@ -610,10 +610,9 @@ function report_coursesize_cmpdesc($a, $b)
      * @param string $displaysize Whether size is shown in formats auto, bytes, Mb or Mb
      * @param string $sortorder Order to sort by
      * @param string $sortdir Order direction
-     * @param int    $excludebackups Whether backups are excluded from the data
      * @return array An array of category and course data sorted by input paramaters
      */
-function report_coursesize_export($displaysize, $sortorder, $sortdir, $excludebackups) {
+function report_coursesize_export($displaysize, $sortorder, $sortdir) {
     global $CFG, $DB;
 
     $config = get_config('report_coursesize');
@@ -648,11 +647,25 @@ function report_coursesize_export($displaysize, $sortorder, $sortdir, $excludeba
             break;
     }
 
-    $coursesizetable = 'report_coursesize';
-    if ($excludebackups) {
+    $params = array('ctxcc' => CONTEXT_COURSECAT, 'order' => $orderby);
+    if (!empty($config->excludebackups)) {
         $coursesizetable = 'report_coursesize_no_backups';
+        $sql = '
+        SELECT
+                ct.id AS catid,
+                ct.name AS catname,
+                ct.parent AS catparent,
+                ct.sortorder AS sortorder,
+                rc.filesize as filesize
+        FROM
+                {course_categories} ct
+                LEFT JOIN {' . $coursesizetable . '} rc ON ct.id = rc.instanceid AND rc.contextlevel = :ctxcc
+        ORDER BY :order';
+
+        $catsnobackups = $DB->get_records_sql($sql, $params);
     }
 
+    $coursesizetable = 'report_coursesize';
     $sql = '
     SELECT
             ct.id AS catid,
@@ -665,13 +678,12 @@ function report_coursesize_export($displaysize, $sortorder, $sortdir, $excludeba
             LEFT JOIN {' . $coursesizetable . '} rc ON ct.id = rc.instanceid AND rc.contextlevel = :ctxcc
     ORDER BY :order';
 
-    $params = array('ctxcc' => CONTEXT_COURSECAT, 'order' => $orderby);
     if ($cats = $DB->get_records_sql($sql, $params)) {
 
         // recalculate
         $dosort = false;
         foreach ($cats as $cat) {
-            $newsize = report_coursesize_catcalc($cat->catid, $excludebackups);
+            $newsize = report_coursesize_catcalc($cat->catid);
             if (!$dosort && $cat->filesize != $newsize) {
                 $dosort = true;
             }
@@ -685,12 +697,43 @@ function report_coursesize_export($displaysize, $sortorder, $sortdir, $excludeba
         }
 
         foreach ($cats AS $cat) {
-            $url = $CFG->wwwroot . '/course/category.php?id=' . $cat->catid;
-            $filesize = report_coursesize_displaysize($cat->filesize, $displaysize);
-            $data['category'][$cat->catid] = array($cat->catname, $filesize, $url);
+            $url = '=hyperlink("' . $CFG->wwwroot . '/course/category.php?id=' . $cat->catid . '", "' . $cat->catname . '")';
+            $totalfilesize = report_coursesize_displaysize($cat->filesize, $displaysize);
+            if (!empty($config->excludebackups)) {
+                if (empty($catsnobackups[$cat->catid])) {
+                    $catsnobackups[$cat->catid]->filesize = 0;
+                }
+                $coursefilesize = report_coursesize_displaysize($catsnobackups[$cat->catid]->filesize, $displaysize);
+                $backupfilesize = report_coursesize_displaysize($cat->filesize - $catsnobackups[$cat->catid]->filesize, $displaysize);
+                $data['category'][$cat->catid] = array($url, $totalfilesize, $coursefilesize, $backupfilesize);
+            } else {
+                $data['category'][$cat->catid] = array($url, $totalfilesize);
+            }
         }
     }
 
+    $params = array('ctxc' => CONTEXT_COURSE, 'order' => $orderby);
+    if (!empty($config->excludebackups)) {
+        $coursesizetable = 'report_coursesize_no_backups';
+        $sql = "
+        SELECT
+                c.id AS courseid,
+                c.fullname AS coursename,
+                c.shortname AS courseshortname,
+                c.sortorder AS sortorder,
+                c.category AS coursecategory,
+                rc.filesize as filesize
+        FROM
+                {course} c
+                LEFT JOIN {" . $coursesizetable . "} rc ON c.id = rc.instanceid AND rc.contextlevel = :ctxc
+        ORDER BY
+                :order
+        ";
+
+        $coursesnobackups = $DB->get_records_sql($sql, $params);
+    }
+
+    $coursesizetable = 'report_coursesize';
     $sql = "
     SELECT
             c.id AS courseid,
@@ -706,14 +749,13 @@ function report_coursesize_export($displaysize, $sortorder, $sortdir, $excludeba
             :order
     ";
 
-    $params = array('ctxc' => CONTEXT_COURSE, 'order' => $orderby);
     if ($courses = $DB->get_records_sql($sql, $params)) {
 
         if ($config->calcmethod == 'live') {
             // recalculate
             $dosort = false;
             foreach ($courses as $course) {
-                $newsize = report_coursesize_coursecalc($course->courseid, $excludebackups);
+                $newsize = report_coursesize_coursecalc($course->courseid);
                 if (!$dosort && $course->filesize != $newsize) {
                     $dosort = true;
                 }
@@ -728,9 +770,18 @@ function report_coursesize_export($displaysize, $sortorder, $sortdir, $excludeba
         }
 
         foreach ($courses AS $course) {
-            $url = $CFG->wwwroot . '/course/view.php?id=' . $course->courseid;
-            $size = report_coursesize_displaysize($course->filesize, $displaysize);
-            $data['course'][$course->coursecategory][$course->courseid] = array($course->coursename, $size, $url);
+            $url = '=hyperlink("' . $CFG->wwwroot . '/course/view.php?id=' . $course->courseid . '", "' . $course->coursename . '")';
+            $totalfilesize = report_coursesize_displaysize($course->filesize, $displaysize);
+            if (!empty($config->excludebackups)) {
+                if (empty($coursesnobackups[$course->courseid])) {
+                    $coursesnobackups[$course->courseid]->filesize = 0;
+                }
+                $coursefilesize = report_coursesize_displaysize($coursesnobackups[$course->courseid]->filesize, $displaysize);
+                $backupfilesize = report_coursesize_displaysize($course->filesize - $coursesnobackups[$course->courseid]->filesize, $displaysize);
+                $data['course'][$course->coursecategory][$course->courseid] = array($url, $totalfilesize, $coursefilesize, $backupfilesize);
+            } else {
+                $data['course'][$course->coursecategory][$course->courseid] = array($url, $totalfilesize);
+            }
         }
     }
 
