@@ -806,7 +806,7 @@ function report_coursesize_modulecalc () {
         return false;
     }
 
-    $sql = "SELECT c.id || '_' || f.component as blah, cm.course as id, f.component, sum(f.filesize) as filesize
+    $sql = "SELECT cm.course || '_' || f.component as blah, cm.course as id, f.component, sum(f.filesize) as filesize
               FROM {course_modules} cm
               JOIN {context} cx ON cx.contextlevel = :ctxm AND cx.instanceid = cm.id
               JOIN {files} f ON f.contextid = cx.id
