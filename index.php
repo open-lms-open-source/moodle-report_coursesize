@@ -33,7 +33,9 @@ admin_externalpage_setup('reportcoursesizepage', '', null, '', array('pagelayout
 
 $config = get_config('report_coursesize');
 if (!empty($export)) {
-    $data = report_coursesize_export($displaysize, $sortorder, $sortdir);
+    require_once($CFG->libdir.'/csvlib.class.php');
+    $csv = new \csv_export_writer();
+    $csv->set_filename('report_coursesize_export');
     $head = array(get_string('ttitle', 'report_coursesize'));
     if (!empty($config->excludebackups)) {
         $head[] = get_string('ttsize', 'report_coursesize');
@@ -42,23 +44,15 @@ if (!empty($export)) {
     } else {
         $head[] = get_string('tsize', 'report_coursesize');
     }
-    require_once $CFG->libdir . '/excellib.class.php';
-    $workbook = new MoodleExcelWorkbook('-');
-    $filename = 'report_coursesize_export';
-    $filename .= clean_filename('-' . gmdate("Ymd_Hi")) . '.xlsx';
-    $workbook->send($filename);
-    $worksheet = $workbook->add_worksheet(get_string('pluginname', 'report_coursesize'));
-    foreach(array_merge(array($head), $data) as $r => $row) {
-        foreach ($row as $c => $cell) {
-            if ($c == 5 && $r) {
-                // For the bytes column.
-                $worksheet->write_number($r, $c, (int)preg_replace('/[^\d]/', '', $cell));
-                continue;
-            }
-            $worksheet->write($r, $c, $cell);
-        }
-    }
-    $workbook->close();
+    $csv->add_data($head);
+    $data = report_coursesize_export($displaysize, $sortorder, $sortdir);
+    if (!empty($data)) {
+        foreach ($data as $row) {
+            $csv->add_data((array)$row);
+         }
+     }
+
+    $csv->download_file();
     exit;
 }
 
