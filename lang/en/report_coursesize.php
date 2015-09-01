@@ -37,7 +37,7 @@ $string['livecalc'] = 'Live calculations: ';
 $string['ttitle'] = 'Category/Course';
 $string['tsize'] = 'Size';
 $string['tddown'] = 'Drill down this category';
-$string['tbsize'] = 'Only Course back size';
+$string['tbsize'] = 'Only Course backup size';
 $string['tcsize'] = 'Overall course size (excluding course backups)';
 $string['ttsize'] = 'Overall course size (including course backups)';
 
