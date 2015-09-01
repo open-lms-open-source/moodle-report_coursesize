@@ -206,19 +206,20 @@ WHERE
         }
     }
 
+    // calculate and update component results
+    $modulecalc = report_coursesize_modulecalc();
+
     // calculate and update user total, add results to totalsize
     $usercalc = report_coursesize_usercalc();
-    if ($usercalc === false) {
-        return false;
+    if ($usercalc !== false) {
+        $totalsize += $usercalc;
     }
-    $totalsize += $usercalc;
 
     // calculate and update user total, add results to totalsize
     $usercalc = report_coursesize_usercalc(false);
-    if ($usercalc === false) {
-        return false;
+    if ($usercalc !== false) {
+        $totalsizeexcludingbackups += $usercalc;
     }
-    $totalsizeexcludingbackups += $usercalc;
 
     // update grand total
     if (!report_coursesize_storecacherow(0, 0, $totalsize, false)) {
