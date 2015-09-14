@@ -750,6 +750,8 @@ function report_coursesize_export($displaysize, $sortorder, $sortdir) {
             :order
     ";
 
+    $categories = coursecat::make_categories_list('', 0);
+    $categories[0] = '/';
     if ($courses = $DB->get_records_sql($sql, $params)) {
 
         if ($config->calcmethod == 'live') {
@@ -779,16 +781,15 @@ function report_coursesize_export($displaysize, $sortorder, $sortdir) {
                 }
                 $coursefilesize = report_coursesize_displaysize($coursesnobackups[$course->courseid]->filesize, $displaysize);
                 $backupfilesize = report_coursesize_displaysize($course->filesize - $coursesnobackups[$course->courseid]->filesize, $displaysize);
-                $data['course'][$course->coursecategory][$course->courseid] = array($url, $totalfilesize, $coursefilesize, $backupfilesize);
+                $data['course'][$course->coursecategory][$course->courseid] = array($categories[$course->coursecategory], $url, $totalfilesize, $coursefilesize, $backupfilesize);
             } else {
-                $data['course'][$course->coursecategory][$course->courseid] = array($url, $totalfilesize);
+                $data['course'][$course->coursecategory][$course->courseid] = array($categories[$course->coursecategory], $url, $totalfilesize);
             }
         }
     }
 
     // Convert data into category based flat layout
     foreach ($data['category'] as $categoryid => $category) {
-        $output[] = $category;
         if (!empty($data['course'][$categoryid])) {
             foreach ($data['course'][$categoryid] as $course) {
                 $output[] = $course;
