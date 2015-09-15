@@ -34,6 +34,7 @@ $string['disabledcap'] = 'Disabled';
 $string['livecalc'] = 'Live calculations: ';
 
 // table
+$string['ttitle'] = 'Course Category';
 $string['tcategories'] = 'Full Category';
 $string['tcourse'] = 'Course';
 $string['tsize'] = 'Size';
