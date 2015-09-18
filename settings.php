@@ -59,3 +59,9 @@ $settings->add(new admin_setting_configcheckbox('report_coursesize/showcoursecom
                                                 $description,
                                                 0));
 
+$name = new lang_string('alwaysdisplaymb', 'report_coursesize');
+$description = new lang_string('alwaysdisplaymbhelp', 'report_coursesize');
+$settings->add(new admin_setting_configcheckbox('report_coursesize/alwaysdisplaymb',
+                                                $name,
+                                                $description,
+                                                0));

@@ -49,6 +49,8 @@ $string['uniquefilesize'] = 'Total unique file size';
 $string['bytes'] = 'bytes';
 
 // Settings
+$string['alwaysdisplaymb'] = 'Always display in MB';
+$string['alwaysdisplaymbhelp'] = 'If enabled, the course information will be always displayed in MB.';
 $string['calcmethod'] = 'Calculations';
 $string['calcmethodcron'] = 'By cron';
 $string['calcmethodlive'] = 'Live calculations';

@@ -81,7 +81,12 @@ echo "
 $forminputs = array();
 $forminputs[] = get_string('sortby', 'report_coursesize') . html_writer::select($orderoptions, 'sorder', $sortorder, array());
 $forminputs[] = get_string('sortdir', 'report_coursesize') . html_writer::select($diroptions, 'sdir', $sortdir, array());
-$forminputs[] = get_string('displaysize', 'report_coursesize') . html_writer::select($sizeoptions, 'display', $displaysize, array());
+if (empty($config->alwaysdisplaymb)) {
+    $forminputs[] = get_string('displaysize', 'report_coursesize') . html_writer::select($sizeoptions, 'display', $displaysize, array());
+}
+else {
+    $forminputs[] = html_writer::empty_tag('input', array('type' => 'hidden', 'name' => 'display', 'value' => 'mb' ));
+}
 if (!empty($config->excludebackups)) {
     $forminputs[] = get_string('excludebackup', 'report_coursesize') . html_writer::checkbox("excludebackups", 1, $excludebackups, '');
 }

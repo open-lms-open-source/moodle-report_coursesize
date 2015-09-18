@@ -57,3 +57,8 @@ $sizeoptions = array('auto' => get_string('sizeauto', 'report_coursesize'),
 $sortorder = array_key_exists($sortorder, $orderoptions) ? $sortorder : $sortorderdefault;
 $sortdir = array_key_exists($sortdir, $diroptions) ? $sortdir : $sortdirdefault;
 $displaysize = array_key_exists($displaysize, $sizeoptions) ? $displaysize : $displaysizedefault;
+
+$config = get_config('report_coursesize');
+if (!empty($config->alwaysdisplaymb)) {
+    $displaysize = 'mb';
+}
