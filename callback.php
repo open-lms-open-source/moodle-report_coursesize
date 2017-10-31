@@ -89,12 +89,12 @@ FROM
         {course_categories} ct
         LEFT JOIN {' . $coursesizetable . '} rc ON ct.id = rc.instanceid AND rc.contextlevel = :ctxcc
 WHERE
-        ct.parent = :id
-ORDER BY :order';
+        ct.parent = :id';
+$sql .= ' ORDER BY ' . $orderby;
 
 $tout = false;
 $totalsize = 0;
-$params = array('ctxcc' => CONTEXT_COURSECAT, 'id' => $id, 'order' => $orderby);
+$params = array('ctxcc' => CONTEXT_COURSECAT, 'id' => $id);
 if ($cats = $DB->get_records_sql($sql, $params)) {
 
     if ($config->calcmethod == 'live') {
@@ -206,12 +206,10 @@ FROM
         {course} c
         LEFT JOIN {" . $coursesizetable . "} rc ON c.id = rc.instanceid AND rc.contextlevel = :ctxc
 WHERE
-        c.category = :id
-ORDER BY
-        :order
-";
+        c.category = :id";
+$sql .= " ORDER BY " . $orderby;
 
-$params = array('ctxc' => CONTEXT_COURSE, 'id' => $id, 'order' => $orderby);
+$params = array('ctxc' => CONTEXT_COURSE, 'id' => $id);
 if ($courses = $DB->get_records_sql($sql, $params)) {
 
     if ($config->calcmethod == 'live') {

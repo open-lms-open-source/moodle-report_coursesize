@@ -648,7 +648,7 @@ function report_coursesize_export($displaysize, $sortorder, $sortdir) {
             break;
     }
 
-    $params = array('ctxcc' => CONTEXT_COURSECAT, 'order' => $orderby);
+    $params = array('ctxcc' => CONTEXT_COURSECAT);
     if (!empty($config->excludebackups)) {
         $coursesizetable = 'report_coursesize_no_backups';
         $sql = '
@@ -660,9 +660,8 @@ function report_coursesize_export($displaysize, $sortorder, $sortdir) {
                 rc.filesize as filesize
         FROM
                 {course_categories} ct
-                LEFT JOIN {' . $coursesizetable . '} rc ON ct.id = rc.instanceid AND rc.contextlevel = :ctxcc
-        ORDER BY :order';
-
+                LEFT JOIN {' . $coursesizetable . '} rc ON ct.id = rc.instanceid AND rc.contextlevel = :ctxcc';
+        $sql .= ' ORDER BY ' . $orderby;
         $catsnobackups = $DB->get_records_sql($sql, $params);
     }
 
@@ -676,8 +675,8 @@ function report_coursesize_export($displaysize, $sortorder, $sortdir) {
             rc.filesize as filesize
     FROM
             {course_categories} ct
-            LEFT JOIN {' . $coursesizetable . '} rc ON ct.id = rc.instanceid AND rc.contextlevel = :ctxcc
-    ORDER BY :order';
+            LEFT JOIN {' . $coursesizetable . '} rc ON ct.id = rc.instanceid AND rc.contextlevel = :ctxcc';
+    $sql .= ' ORDER BY ' . $orderby;
 
     if ($cats = $DB->get_records_sql($sql, $params)) {
 
@@ -713,7 +712,38 @@ function report_coursesize_export($displaysize, $sortorder, $sortdir) {
         }
     }
 
-    $params = array('ctxc' => CONTEXT_COURSE, 'order' => $orderby);
+    // get courses
+    switch($sortorder) {
+        case 'salphan':
+            $orderby = 'coursename';
+            break;
+
+        case 'salphas':
+            $orderby = 'courseshortname';
+            break;
+
+        case 'sorder':
+            $orderby = 'sortorder';
+            break;
+
+        case 'ssize':
+        default:
+            $orderby = 'filesize';
+            break;
+    }
+
+    switch($sortdir) {
+        case 'asc':
+            $orderby .= ' ASC';
+            break;
+
+        case 'desc':
+        default:
+            $orderby .= ' DESC';
+            break;
+    }
+
+    $params = array('ctxc' => CONTEXT_COURSE);
     if (!empty($config->excludebackups)) {
         $coursesizetable = 'report_coursesize_no_backups';
         $sql = "
@@ -726,14 +756,12 @@ function report_coursesize_export($displaysize, $sortorder, $sortdir) {
                 rc.filesize as filesize
         FROM
                 {course} c
-                LEFT JOIN {" . $coursesizetable . "} rc ON c.id = rc.instanceid AND rc.contextlevel = :ctxc
-        ORDER BY
-                :order
-        ";
+                LEFT JOIN {" . $coursesizetable . "} rc ON c.id = rc.instanceid AND rc.contextlevel = :ctxc";
 
         $coursesnobackups = $DB->get_records_sql($sql, $params);
     }
 
+    $sql .= " ORDER BY " . $orderby;
     $coursesizetable = 'report_coursesize';
     $sql = "
     SELECT
@@ -745,11 +773,8 @@ function report_coursesize_export($displaysize, $sortorder, $sortdir) {
             rc.filesize as filesize
     FROM
             {course} c
-            LEFT JOIN {" . $coursesizetable . "} rc ON c.id = rc.instanceid AND rc.contextlevel = :ctxc
-    ORDER BY
-            :order
-    ";
-
+            LEFT JOIN {" . $coursesizetable . "} rc ON c.id = rc.instanceid AND rc.contextlevel = :ctxc";
+    $sql .= " ORDER BY " . $orderby;
     $categories = coursecat::make_categories_list('', 0);
     $categories[0] = '/';
     if ($courses = $DB->get_records_sql($sql, $params)) {
