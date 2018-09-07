@@ -775,7 +775,7 @@ function report_coursesize_export($displaysize, $sortorder, $sortdir) {
             {course} c
             LEFT JOIN {" . $coursesizetable . "} rc ON c.id = rc.instanceid AND rc.contextlevel = :ctxc";
     $sql .= " ORDER BY " . $orderby;
-    $categories = coursecat::make_categories_list('', 0);
+    $categories = core_course_category::make_categories_list('', 0);
     $categories[0] = '/';
     if ($courses = $DB->get_records_sql($sql, $params)) {
 
