@@ -89,3 +89,6 @@ $string['granularlink'] = 'Details';
 $string['exporttoexcel'] = 'Export as an Excel file';
 $string['exporttocsv'] = 'Export as a CSV file';
 $string['export'] = 'Export';
+
+// BASE-3506.
+$string['privacy:metadata'] = 'The Course size plugin does not store any personal data.';
