@@ -20,7 +20,7 @@
  * @package    report
  * @subpackage coursesize
  * @author     Kirill Astashov <kirill.astashov@gmail.com>
- * @copyright  2012 NetSpot Pty Ltd {@link http://netspot.com.au}
+ * @copyright  Copyright (c) 2021 Open LMS (https://www.openlms.net)
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
@@ -34,9 +34,6 @@ $settings->add(new admin_setting_configselect('report_coursesize/calcmethod',
     new lang_string('calcmethodhelp', 'report_coursesize'),
     'cron', array('cron' => new lang_string('calcmethodcron', 'report_coursesize'),
         'live' => new lang_string('calcmethodlive', 'report_coursesize'))));
-
-$settings->add(new admin_setting_configtime('report_coursesize/start_hour', 'start_minute', new lang_string('executeat'),
-    new lang_string('executeathelp', 'report_coursesize'), array('h' => 1, 'm' => '00')));
 
 $name = new lang_string('showgranular', 'report_coursesize');
 $description = new lang_string('showgranularhelp', 'report_coursesize');

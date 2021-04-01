@@ -20,13 +20,13 @@
  * @package    report
  * @subpackage coursesize
  * @author     Kirill Astashov <kirill.astashov@gmail.com>
- * @copyright  2012 NetSpot Pty Ltd {@link http://netspot.com.au}
+ * @copyright  Copyright (c) 2021 Open LMS (https://www.openlms.net)
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 defined('MOODLE_INTERNAL') || die;
 
-$plugin->version   = 2015081400;              // The current plugin version (Date: YYYYMMDDXX)
-$plugin->requires  = 2011120502;              // Requires this Moodle version
-$plugin->component = 'report_coursesize';     // Full name of the plugin (used for diagnostics)
-$plugin->cron      = 1800;
+$plugin->version   = 2021040100;
+$plugin->release   = '3.9.0';
+$plugin->requires  = 2020061500;
+$plugin->component = 'report_coursesize';

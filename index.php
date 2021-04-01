@@ -20,7 +20,7 @@
  * @package    report
  * @subpackage coursesize
  * @author     Kirill Astashov <kirill.astashov@gmail.com>
- * @copyright  2012 NetSpot Pty Ltd {@link http://netspot.com.au}
+ * @copyright  Copyright (c) 2021 Open LMS (https://www.openlms.net)
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
@@ -29,7 +29,9 @@ require_once($CFG->libdir.'/adminlib.php');
 require_once(dirname(__file__) . '/locallib.php');
 require_login();
 require_once(dirname(__file__) . '/getoptions.php');
-admin_externalpage_setup('reportcoursesizepage', '', null, '', array('pagelayout'=>'report'));
+admin_externalpage_setup('reportcoursesizepage', '', null, '', array('pagelayout' => 'report'));
+
+require_capability('report/coursesize:view', context_system::instance());
 
 $config = get_config('report_coursesize');
 if (!empty($export)) {
@@ -50,8 +52,8 @@ if (!empty($export)) {
     if (!empty($data)) {
         foreach ($data as $row) {
             $csv->add_data((array)$row);
-         }
-     }
+        }
+    }
 
     $csv->download_file();
     exit;
@@ -60,45 +62,40 @@ if (!empty($export)) {
 echo $OUTPUT->header();
 
 $lastruntime = (!isset($config->lastruntime)) ? get_string('nevercap', 'report_coursesize') : date('r', $config->lastruntime);
-$livecalcenabled = (isset($config->calcmethod) && $config->calcmethod == 'live') ? get_string('enabledcap', 'report_coursesize') : get_string('disabledcap', 'report_coursesize');
+$livecalcenabled = (isset($config->calcmethod) && $config->calcmethod == 'live') ?
+    get_string('enabledcap', 'report_coursesize') : get_string('disabledcap', 'report_coursesize');
 
-echo html_writer::tag('div', get_string('lastcalculated', 'report_coursesize') . $lastruntime, array('style' => 'margin-bottom:10px;'));
-echo html_writer::tag('div', get_string('livecalc', 'report_coursesize') . $livecalcenabled, array('style' => 'margin-bottom:10px;'));
+echo html_writer::tag('div',
+    get_string('lastcalculated', 'report_coursesize') . $lastruntime, array('style' => 'margin-bottom:10px;'));
+echo html_writer::tag('div',
+    get_string('livecalc', 'report_coursesize') . $livecalcenabled, array('style' => 'margin-bottom:10px;'));
 
-// for catsize.js to be able to pass these parameters to callback script
-echo "
-<script type=\"text/javascript\">
-//<![CDATA[
-    var csize_sortorder = '{$sortorder}';
-    var csize_sortdir = '{$sortdir}';
-    var csize_displaysize = '{$displaysize}';
-    var csize_excludebackups = '{$excludebackups}';
-//]]>
-</script>
-";
-
-// output form
+// Output form.
 $forminputs = array();
 $forminputs[] = get_string('sortby', 'report_coursesize') . html_writer::select($orderoptions, 'sorder', $sortorder, array());
 $forminputs[] = get_string('sortdir', 'report_coursesize') . html_writer::select($diroptions, 'sdir', $sortdir, array());
 if (empty($config->alwaysdisplaymb)) {
-    $forminputs[] = get_string('displaysize', 'report_coursesize') . html_writer::select($sizeoptions, 'display', $displaysize, array());
-}
-else {
+    $forminputs[] = get_string('displaysize', 'report_coursesize') .
+        html_writer::select($sizeoptions, 'display', $displaysize, array());
+} else {
     $forminputs[] = html_writer::empty_tag('input', array('type' => 'hidden', 'name' => 'display', 'value' => 'mb' ));
 }
 if (!empty($config->excludebackups)) {
-    $forminputs[] = get_string('excludebackup', 'report_coursesize') . html_writer::checkbox("excludebackups", 1, $excludebackups, '');
+    $forminputs[] = get_string('excludebackup', 'report_coursesize') .
+        html_writer::checkbox("excludebackups", 1, $excludebackups, '');
 }
-$forminputs[] = html_writer::empty_tag('input', array('type' => 'submit', 'name' => 'go', 'value' => get_string('refresh')));
-$forminputs[] = html_writer::empty_tag('input', array('type' => 'submit', 'name' => 'export', 'value' => get_string('export', 'report_coursesize')));
+$forminputs[] = html_writer::empty_tag('input',
+    array('type' => 'submit', 'name' => 'go', 'value' => get_string('refresh')));
+$forminputs[] = html_writer::empty_tag('input',
+    array('type' => 'submit', 'name' => 'export', 'value' => get_string('export', 'report_coursesize')));
 echo html_writer::start_tag('div', array('style' => 'text-align:center;margin-bottom:10px;'));
-echo html_writer::start_tag('form', array('name' => 'sortoptions', 'method' => 'POST', 'action' => new moodle_url('/report/coursesize/index.php')));
+echo html_writer::start_tag('form',
+    array('name' => 'sortoptions', 'method' => 'POST', 'action' => new moodle_url('/report/coursesize/index.php')));
 echo implode('&nbsp;&nbsp;&nbsp;', $forminputs);
 echo html_writer::end_tag('form');
 echo html_writer::end_tag('div');
 
-$PAGE->requires->js(new moodle_url('/report/coursesize/catsize.js'));
+$PAGE->requires->js_call_amd('report_coursesize/catsize', 'init', [$sortorder, $sortdir, $displaysize, $excludebackups]);
 echo html_writer::tag('div', '', array('id' => 'cat0', 'style' => 'display:none;'));
 
 echo $OUTPUT->footer();

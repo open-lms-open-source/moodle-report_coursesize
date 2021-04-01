@@ -16,10 +16,9 @@
 
 /**
  *
- * @package    report
- * @subpackage coursesize
+ * @package    report_coursesize
  * @author     Kirill Astashov <kirill.astashov@gmail.com>
- * @copyright  2012 NetSpot Pty Ltd {@link http://netspot.com.au}
+ * @copyright  Copyright (c) 2021 Open LMS (https://www.openlms.net)
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
@@ -32,20 +31,18 @@ require_once($CFG->libdir.'/filelib.php');
 $context = context_system::instance();
 $PAGE->set_context($context);
 
-if (!has_capability('report/coursesize:view', $context)) {
-    exit;
-}
+require_capability('report/coursesize:view', $context);
 
 // The column where to insert the granular report icon links if enabled.
 define('REPORT_COURSESIZE_GRANULAR_COL', 2);
 
-$id = optional_param('id', 0, PARAM_INT); // category id
-$course = optional_param('course', 0, PARAM_INT); // course based data
+$id = optional_param('id', 0, PARAM_INT); // Category id.
+$course = optional_param('course', 0, PARAM_INT); // Course based data.
 
 $config = get_config('report_coursesize');
 
 $out = '';
-// get categories
+// Get categories.
 switch($sortorder) {
     case 'salphan':
     case 'salphas':
@@ -98,7 +95,7 @@ $params = array('ctxcc' => CONTEXT_COURSECAT, 'id' => $id);
 if ($cats = $DB->get_records_sql($sql, $params)) {
 
     if ($config->calcmethod == 'live') {
-        // recalculate
+        // Re-calculate.
         $dosort = false;
         foreach ($cats as $cat) {
             $newsize = report_coursesize_catcalc($cat->catid, $excludebackups);
@@ -108,14 +105,13 @@ if ($cats = $DB->get_records_sql($sql, $params)) {
             $cat->filesize = $newsize;
         }
 
-        // sort by size manually as we cannot
-        // rely on DB sorting with live calculation
+        // Sort by size manually as we cannot rely on DB sorting with live calculation.
         if ($dosort && $sortorder == 'ssize') {
             usort($cats, 'report_coursesize_cmp' . $sortdir);
         }
     }
 
-    foreach ($cats AS $cat) {
+    foreach ($cats as $cat) {
 
         $table = new html_table();
         $table->align = array('left', 'left', 'right');
@@ -134,7 +130,7 @@ if ($cats = $DB->get_records_sql($sql, $params)) {
             }
             $tout = true;
         }
-        // check if category has anything in it
+        // Check if category has anything in it.
         if ($DB->record_exists('course_categories', array('parent' => $cat->catid))) {
             $hascontent = true;
         } else {
@@ -144,10 +140,20 @@ if ($cats = $DB->get_records_sql($sql, $params)) {
                 $hascontent = false;
             }
         }
+        $expandstr = get_string('tdtoggle', 'report_coursesize');
         if ($hascontent) {
-            $icon = html_writer::empty_tag('img', array('src' => $CFG->wwwroot . '/report/coursesize/pix/switch_plus.gif', 'width' => 16, 'height' => 16, 'onclick' => "catsize({$cat->catid})", 'title' => get_string('tddown', 'report_coursesize'), 'style' => 'cursor:pointer'));
+            $pix = new \pix_icon('t/switch_plus', $expandstr, 'moodle', ['role' => 'button']);
+            $options = [
+                'class' => 'cattoggle',
+                'data-id' => $cat->catid,
+                'aria-label' => $expandstr,
+                'role' => 'button',
+                'aria-expanded' => false,
+            ];
+            $icon = html_writer::link('', $OUTPUT->render($pix), $options);
         } else {
-            $icon = html_writer::empty_tag('img', array('src' => $CFG->wwwroot . '/report/coursesize/pix/empty.gif', 'width' => 16, 'height' => 16));
+            $pix = new \pix_icon('empty', $expandstr, 'report_coursesize', ['role' => 'button']);
+            $icon = $OUTPUT->render($pix);
         }
         $divicon = html_writer::tag('div', $icon, array('id' => 'icon'.$cat->catid));
         $title = html_writer::tag('strong', $cat->catname);
@@ -163,7 +169,6 @@ if ($cats = $DB->get_records_sql($sql, $params)) {
     }
 }
 
-// get courses
 switch($sortorder) {
     case 'salphan':
         $orderby = 'coursename';
@@ -213,7 +218,6 @@ $params = array('ctxc' => CONTEXT_COURSE, 'id' => $id);
 if ($courses = $DB->get_records_sql($sql, $params)) {
 
     if ($config->calcmethod == 'live') {
-        // recalculate
         report_coursesize_modulecalc();
         $dosort = false;
         foreach ($courses as $course) {
@@ -224,14 +228,14 @@ if ($courses = $DB->get_records_sql($sql, $params)) {
             $course->filesize = $newsize;
         }
 
-        // sort by size manually as we cannot
-        // rely on DB sorting with live calculation
+        // Sort by size manually as we cannot
+        // rely on DB sorting with live calculation.
         if ($dosort && $sortorder == 'ssize') {
             usort($courses, 'report_coursesize_cmp' . $sortdir);
         }
     }
 
-    foreach ($courses AS $course) {
+    foreach ($courses as $course) {
         $table = new html_table();
         $table->align = array('left', 'left', 'right');
         $table->width = '100%';
@@ -242,10 +246,20 @@ if ($courses = $DB->get_records_sql($sql, $params)) {
         ));
         $size = report_coursesize_displaysize($course->filesize, $displaysize);
         $data = report_coursesize_modulestats($course->courseid, $displaysize, $excludebackups);
+        $expandstr = get_string('tdtoggle', 'report_coursesize');
         if (!empty($data)) {
-            $icon = html_writer::empty_tag('img', array('src' => $CFG->wwwroot . '/report/coursesize/pix/switch_plus.gif', 'width' => 16, 'height' => 16, 'onclick' => "coursesize({$course->courseid})", 'title' => get_string('tddown', 'report_coursesize'), 'style' => 'cursor:pointer'));
+            $pix = new \pix_icon('t/switch_plus', $expandstr, 'moodle', ['role' => 'button']);
+            $options = [
+                'class' => 'coursetoggle',
+                'data-id' => $course->courseid,
+                'aria-label' => $expandstr,
+                'role' => 'button',
+                'aria-expanded' => false,
+            ];
+            $icon = html_writer::link('', $OUTPUT->render($pix), $options);
         } else {
-            $icon = html_writer::empty_tag('img', array('src' => $CFG->wwwroot . '/report/coursesize/pix/empty.gif', 'width' => 16, 'height' => 16));
+            $pix = new \pix_icon('empty', $expandstr, 'report_coursesize', ['role' => 'button']);
+            $icon = $OUTPUT->render($pix);
         }
         $divicon = html_writer::tag('div', $icon, array('id' => 'iconcourse'.$course->courseid));
         $table->data[] = array($divicon, $title, $size);
@@ -282,9 +296,9 @@ if ($courses = $DB->get_records_sql($sql, $params)) {
 
 $out = html_writer::tag('div', $out, array('style' => 'margin-left: 25px;'));
 
-// we are displaying the main table (Moodle root), so let's print some additional info
+// We are displaying the main table (Moodle root), so let's print some additional info.
 if (!$id) {
-    // get user files
+    // Get user files.
     if ($DB->record_exists($coursesizetable, array('contextlevel' => 0, 'instanceid' => 1))) {
         $row = $DB->get_record($coursesizetable, array('contextlevel' => 0, 'instanceid' => 1));
         $totalsize += $row->filesize;
@@ -298,18 +312,19 @@ if (!$id) {
         }
     }
 
-    // store grand total
+    // Store grand total.
     if ($config->calcmethod == 'live') {
         report_coursesize_storecacherow(0, 0, $totalsize);
     }
 
-    // output totals
+    // Output totals.
     $out .= html_writer::empty_tag('br') . html_writer::empty_tag('br');
     $out .= get_string('userfilesize', 'report_coursesize') . ': ' . report_coursesize_displaysize($usersize, $displaysize);
     $out .= html_writer::empty_tag('br');
     $out .= get_string('totalfilesize', 'report_coursesize') . ': ' . report_coursesize_displaysize($totalsize, $displaysize);
 
-    //get and output total unique file size (may differ from $totalsize since Moodle file storage does not duplicate identical files)
+    // Get and output total unique file size (may differ from $totalsize since
+    // Moodle file storage does not duplicate identical files).
     if ($DB->record_exists($coursesizetable, array('contextlevel' => 0, 'instanceid' => 2))) {
         $row = $DB->get_record($coursesizetable, array('contextlevel' => 0, 'instanceid' => 2));
         $uniquefilesize = $row->filesize;

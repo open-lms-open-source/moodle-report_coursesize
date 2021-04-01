@@ -21,11 +21,11 @@
  * @package    report
  * @subpackage coursesize
  * @author     Kirill Astashov <kirill.astashov@gmail.com>
- * @copyright  2012 NetSpot Pty Ltd {@link http://netspot.com.au}
+ * @copyright  Copyright (c) 2021 Open LMS (https://www.openlms.net)
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-defined('MOODLE_INTERNAL') || die('Direct access to this script is forbidden.');
+defined('MOODLE_INTERNAL') || die();
 
 $sortorderdefault = 'ssize';
 $sortdirdefault = 'desc';
@@ -39,21 +39,24 @@ $displaysize = optional_param('display', $displaysizedefault, PARAM_TEXT);
 $excludebackups = optional_param('excludebackups', $excludebackupsdefault, PARAM_INT);
 $export = optional_param('export', $exportdefault, PARAM_TEXT);
 
-// display options
-$orderoptions = array('ssize' => get_string('ssize', 'report_coursesize'),
-                      'salphan' => get_string('salphan', 'report_coursesize'),
-                      'salphas' => get_string('salphas', 'report_coursesize'),
-                      'sorder' => get_string('sorder', 'report_coursesize'),
-                );
-$diroptions = array('asc' => get_string('asc'),
-                    'desc' => get_string('desc'),
-               );
-$sizeoptions = array('auto' => get_string('sizeauto', 'report_coursesize'), 
-                     'gb' => get_string('sizegb'),
-                     'mb' => get_string('sizemb'),
-                     'kb' => get_string('sizekb'),
-                     'b' => get_string('sizeb'),
-               );
+// Display options.
+$orderoptions = [
+    'ssize' => get_string('ssize', 'report_coursesize'),
+    'salphan' => get_string('salphan', 'report_coursesize'),
+    'salphas' => get_string('salphas', 'report_coursesize'),
+    'sorder' => get_string('sorder', 'report_coursesize'),
+];
+$diroptions = [
+    'asc' => get_string('asc'),
+    'desc' => get_string('desc'),
+];
+$sizeoptions = [
+    'auto' => get_string('sizeauto', 'report_coursesize'),
+    'gb' => get_string('sizegb'),
+    'mb' => get_string('sizemb'),
+    'kb' => get_string('sizekb'),
+    'b' => get_string('sizeb'),
+];
 $sortorder = array_key_exists($sortorder, $orderoptions) ? $sortorder : $sortorderdefault;
 $sortdir = array_key_exists($sortdir, $diroptions) ? $sortdir : $sortdirdefault;
 $displaysize = array_key_exists($displaysize, $sizeoptions) ? $displaysize : $displaysizedefault;

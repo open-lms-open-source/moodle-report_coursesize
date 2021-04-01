@@ -20,9 +20,11 @@
  * @package    report
  * @subpackage coursesize
  * @author     Kirill Astashov <kirill.astashov@gmail.com>
- * @copyright  2012 NetSpot Pty Ltd {@link http://netspot.com.au}
+ * @copyright  Copyright (c) 2021 Open LMS (https://www.openlms.net)
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
+
+defined('MOODLE_INTERNAL') || die();
 
 /**
  * Calculates and caches course and category sizes
@@ -35,7 +37,7 @@ function report_coursesize_crontask() {
     $totalsize = 0;
     $totalsizeexcludingbackups = 0;
 
-    // delete orphaned COURSE rows from cache table
+    // Delete orphaned COURSE rows from cache table.
     $sql = "
 DELETE FROM
         {report_coursesize}
@@ -49,13 +51,13 @@ DELETE FROM
         return false;
     }
 
-    // delete orphaned COURSE rows from no backups cache table
+    // Delete orphaned COURSE rows from no backups cache table.
     $sql = str_replace('report_coursesize', 'report_coursesize_no_backups', $sql);
     if (!$DB->execute($sql, $params)) {
         return false;
     }
 
-    // get COURSE sizes and populate db
+    // Get COURSE sizes and populate db.
     $sql = "
 SELECT id AS id, category AS category, SUM(filesize) AS filesize
 FROM (
@@ -86,7 +88,7 @@ GROUP BY id, category;
         return false;
     }
 
-    // get COURSE sizes with no backups and populate db
+    // Get COURSE sizes with no backups and populate db.
     $sql = "
 SELECT id AS id, category AS category, SUM(filesize) AS filesize
 FROM (
@@ -124,7 +126,11 @@ GROUP BY id, category;
             return false;
         }
         if (!empty($courseexcludingbackups[$course->id]) &&
-            !report_coursesize_storecacherow(CONTEXT_COURSE, $courseexcludingbackups[$course->id]->id, $courseexcludingbackups[$course->id]->filesize, true)) {
+            !report_coursesize_storecacherow(
+                CONTEXT_COURSE,
+                $courseexcludingbackups[$course->id]->id,
+                $courseexcludingbackups[$course->id]->filesize, true)
+            ) {
             return false;
         }
         $totalsize += $course->filesize;
@@ -135,7 +141,7 @@ GROUP BY id, category;
         }
     }
 
-    // delete orphaned CATEGORY rows from cache table
+    // Delete orphaned CATEGORY rows from cache table.
     $sql = "
 DELETE FROM
     {report_coursesize}
@@ -151,15 +157,15 @@ WHERE
         return false;
     }
 
-    // delete orphaned CATEGORY rows from no backups cache table
+    // Delete orphaned CATEGORY rows from no backups cache table.
     $sql = str_replace('report_coursesize', 'report_coursesize_no_backups', $sql);
     if (!$DB->execute($sql, $params)) {
         return false;
     }
 
-    // get CATEGORY sizes and populate db
+    // Get CATEGORY sizes and populate db
     // first, get courses under each category (no matter how deeply nested)
-    // We have to have the first column unique ;-(
+    // We have to have the first column unique.
     $sql = "
 SELECT
         " . $DB->sql_concat('ct.id', "'_'", 'cx.instanceid') . " AS blah, ct.id AS catid, cx.instanceid AS courseid
@@ -173,12 +179,12 @@ WHERE
 ";
 
     $params = array('ctxc' => CONTEXT_COURSE, 'ctxcc' => CONTEXT_COURSECAT);
-   if (($cats = $DB->get_records_sql($sql, $params)) === false) {
+    if (($cats = $DB->get_records_sql($sql, $params)) === false) {
         mtrace('Failed to query categories. Aborting...');
         return false;
-   }
+    }
 
-    // second, add up course sizes (which we already have) to their categories
+    // Second, add up course sizes (which we already have) to their categories.
     $catsizecache = array();
     $catsizeexcludingbackupscache = array();
     foreach ($cats as $cat) {
@@ -196,7 +202,7 @@ WHERE
         }
     }
 
-    // populate db
+    // Populate db.
     foreach ($cats as $cat) {
         if (!report_coursesize_storecacherow(CONTEXT_COURSECAT, $cat->catid, $catsizecache[$cat->catid], false)) {
             return false;
@@ -206,37 +212,37 @@ WHERE
         }
     }
 
-    // calculate and update component results
+    // Calculate and update component results.
     $modulecalc = report_coursesize_modulecalc();
 
-    // calculate and update user total, add results to totalsize
+    // Calculate and update user total, add results to totalsize.
     $usercalc = report_coursesize_usercalc();
     if ($usercalc !== false) {
         $totalsize += $usercalc;
     }
 
-    // calculate and update user total, add results to totalsize
+    // Calculate and update user total, add results to totalsize.
     $usercalc = report_coursesize_usercalc(false);
     if ($usercalc !== false) {
         $totalsizeexcludingbackups += $usercalc;
     }
 
-    // update grand total
+    // Update grand total.
     if (!report_coursesize_storecacherow(0, 0, $totalsize, false)) {
         return false;
     }
 
-    // update grand total without backups
+    // Update grand total without backups.
     if (!report_coursesize_storecacherow(0, 0, $totalsizeexcludingbackups, true)) {
         return false;
     }
 
-    // calculate and update unique grand total
+    // Calculate and update unique grand total.
     if (report_coursesize_uniquetotalcalc(false) === false) {
         return false;
     }
 
-    // calculate and update unique grand total without backups
+    // Calculate and update unique grand total without backups.
     if (report_coursesize_uniquetotalcalc(true) === false) {
         return false;
     }
@@ -250,8 +256,8 @@ WHERE
 function report_coursesize_catcalc($catid, $excludebackups = false) {
     global $DB;
 
-    // first, get the list of courses nested under the category
-    // we have to make the first column unique
+    // First, get the list of courses nested under the category
+    // we have to make the first column unique.
     $sql = "
 SELECT
         " . $DB->sql_concat('ct.id', "'_'", 'cx.instanceid') . " AS blah, ct.id AS catid, cx.instanceid AS courseid
@@ -266,7 +272,7 @@ WHERE
 ";
     $params = array('ctxc' => CONTEXT_COURSE, 'ctxcc' => CONTEXT_COURSECAT, 'id' => $catid);
     $rows = $DB->get_records_sql($sql, $params);
-    if ($rows === false OR sizeof($rows) == 0) {
+    if ($rows === false || count($rows) == 0) {
         if (!report_coursesize_storecacherow(CONTEXT_COURSECAT, $catid, 0, false)) {
             return false;
         }
@@ -276,13 +282,13 @@ WHERE
         return 0;
     }
 
-    // get couseids as array
+    // Get couseids as array.
     $courseids = array();
-    foreach ($rows AS $row) {
+    foreach ($rows as $row) {
         $courseids[] = $row->courseid;
     }
 
-    // second, get total size of those courses
+    // Second, get total size of those courses.
     list($insql, $params) = $DB->get_in_or_equal($courseids);
     $params = array_merge($params, $params, $params);
     $excludebackupssql = '';
@@ -379,9 +385,9 @@ ORDER BY x.filesize DESC
     return $filelist;
 }
 
-//
-// calculates size of a single course
-//
+/**
+ * Calculates size of a single course.
+ */
 function report_coursesize_coursecalc($courseid, $excludebackups = false) {
     global $DB;
 
@@ -428,9 +434,9 @@ FROM (
     return $course->filesize;
 }
 
-//
-// calculates size of user files
-//
+/**
+ * Calculates size of user files.
+ */
 function report_coursesize_usercalc($excludebackups = false) {
     global $DB;
 
@@ -438,7 +444,7 @@ function report_coursesize_usercalc($excludebackups = false) {
 SELECT
         SUM(fs.filesize) as filesize
 FROM
-        {context} cx 
+        {context} cx
         LEFT JOIN {files} fs ON fs.contextid = cx.id
 WHERE
         cx.contextlevel = " . CONTEXT_USER . "
@@ -460,15 +466,24 @@ WHERE
     return $filesize;
 }
 
-//
-// calculates grand total for unique files records in Moodle (unique hashes)
-//
+/**
+ * Calculates grand total for unique files records in Moodle (unique hashes).
+ */
 function report_coursesize_uniquetotalcalc($excludebackups = false) {
     global $DB;
 
-    $sql = "SELECT SUM(filesize) AS filesize FROM (SELECT DISTINCT(f.contenthash), f.filesize AS filesize FROM {files} f) fs";
+    $sql = "SELECT SUM(filesize) AS filesize
+            FROM (
+                SELECT DISTINCT(f.contenthash), f.filesize AS filesize
+                FROM {files} f
+            ) fs";
     if ($excludebackups) {
-        $sql = "SELECT SUM(filesize) AS filesize FROM (SELECT DISTINCT(f.contenthash), f.filesize AS filesize FROM {files} f where component != 'backup' AND filearea != 'backup') fs";
+        $sql = "SELECT SUM(filesize) AS filesize
+                FROM (
+                    SELECT DISTINCT(f.contenthash), f.filesize AS filesize
+                    FROM {files} f
+                    WHERE component != 'backup' AND filearea != 'backup'
+                ) fs";
     }
     $row = $DB->get_record_sql($sql, array());
     if ($row === false) {
@@ -484,9 +499,9 @@ function report_coursesize_uniquetotalcalc($excludebackups = false) {
     return $filesize;
 }
 
-//
-// checks if record exists in cache table and then inserts or updates
-//
+/**
+ * Checks if record exists in cache table and then inserts or updates.
+ */
 function report_coursesize_storecacherow($contextlevel, $instanceid, $filesize, $excludebackups = false) {
     global $DB;
     $r = new stdClass();
@@ -515,9 +530,9 @@ function report_coursesize_storecacherow($contextlevel, $instanceid, $filesize, 
     return true;
 }
 
-//
-// checks if component record exists in cache table and then inserts or updates
-//
+/**
+ * Checks if component record exists in cache table and then inserts or updates.
+ */
 function report_coursesize_storecomponentcacherow($component, $courseid, $filesize) {
     global $DB;
     $r = new stdClass();
@@ -541,9 +556,9 @@ function report_coursesize_storecomponentcacherow($component, $courseid, $filesi
     return true;
 }
 
-//
-// formats file size for display
-//
+/**
+ * Formats file size for display.
+ */
 function report_coursesize_displaysize($size, $type='auto') {
 
     static $gb, $mb, $kb, $b;
@@ -587,32 +602,30 @@ function report_coursesize_displaysize($size, $type='auto') {
     return $size;
 }
 
-//
-// These sort array of objects by filesize property
-// 
-function report_coursesize_cmpasc($a, $b)
-{ 
+/**
+ * These sort array of objects by filesize property.
+ */
+function report_coursesize_cmpasc($a, $b) {
     if ($a->filesize == $b->filesize) {
         return 0;
     }
     return ($a->filesize < $b->filesize) ? -1 : 1;
 }
 
-function report_coursesize_cmpdesc($a, $b)
-{ 
+function report_coursesize_cmpdesc($a, $b) {
     if ($a->filesize == $b->filesize) {
         return 0;
     }
     return ($a->filesize > $b->filesize) ? -1 : 1;
 }
 
-    /**
-     * Generate export data for a csv based on display size, sorting and if backups are excluded
-     * @param string $displaysize Whether size is shown in formats auto, bytes, Mb or Mb
-     * @param string $sortorder Order to sort by
-     * @param string $sortdir Order direction
-     * @return array An array of category and course data sorted by input paramaters
-     */
+/**
+ * Generate export data for a csv based on display size, sorting and if backups are excluded
+ * @param string $displaysize Whether size is shown in formats auto, bytes, Mb or Mb
+ * @param string $sortorder Order to sort by
+ * @param string $sortdir Order direction
+ * @return array An array of category and course data sorted by input paramaters
+ */
 function report_coursesize_export($displaysize, $sortorder, $sortdir) {
     global $CFG, $DB;
 
@@ -620,7 +633,6 @@ function report_coursesize_export($displaysize, $sortorder, $sortdir) {
     $data = array();
     $output = array();
 
-    // get categories
     switch($sortorder) {
         case 'salphan':
         case 'salphas':
@@ -680,7 +692,7 @@ function report_coursesize_export($displaysize, $sortorder, $sortdir) {
 
     if ($cats = $DB->get_records_sql($sql, $params)) {
 
-        // recalculate
+        // Recalculate.
         $dosort = false;
         foreach ($cats as $cat) {
             $newsize = report_coursesize_catcalc($cat->catid);
@@ -690,13 +702,13 @@ function report_coursesize_export($displaysize, $sortorder, $sortdir) {
             $cat->filesize = $newsize;
         }
 
-        // sort by size manually as we cannot
-        // rely on DB sorting with live calculation
+        // Sort by size manually as we cannot
+        // rely on DB sorting with live calculation.
         if ($dosort && $sortorder == 'ssize') {
             usort($cats, 'report_coursesize_cmp' . $sortdir);
         }
 
-        foreach ($cats AS $cat) {
+        foreach ($cats as $cat) {
             $url = '=hyperlink("' . $CFG->wwwroot . '/course/category.php?id=' . $cat->catid . '", "' . $cat->catname . '")';
             $totalfilesize = report_coursesize_displaysize($cat->filesize, $displaysize);
             if (!empty($config->excludebackups)) {
@@ -704,7 +716,8 @@ function report_coursesize_export($displaysize, $sortorder, $sortdir) {
                     $catsnobackups[$cat->catid]->filesize = 0;
                 }
                 $coursefilesize = report_coursesize_displaysize($catsnobackups[$cat->catid]->filesize, $displaysize);
-                $backupfilesize = report_coursesize_displaysize($cat->filesize - $catsnobackups[$cat->catid]->filesize, $displaysize);
+                $backupfilesize = report_coursesize_displaysize($cat->filesize - $catsnobackups[$cat->catid]->filesize,
+                    $displaysize);
                 $data['category'][$cat->catid] = array($url, $totalfilesize, $coursefilesize, $backupfilesize);
             } else {
                 $data['category'][$cat->catid] = array($url, $totalfilesize);
@@ -712,7 +725,6 @@ function report_coursesize_export($displaysize, $sortorder, $sortdir) {
         }
     }
 
-    // get courses
     switch($sortorder) {
         case 'salphan':
             $orderby = 'coursename';
@@ -780,7 +792,7 @@ function report_coursesize_export($displaysize, $sortorder, $sortdir) {
     if ($courses = $DB->get_records_sql($sql, $params)) {
 
         if ($config->calcmethod == 'live') {
-            // recalculate
+            // Recalculate.
             $dosort = false;
             foreach ($courses as $course) {
                 $newsize = report_coursesize_coursecalc($course->courseid);
@@ -790,30 +802,34 @@ function report_coursesize_export($displaysize, $sortorder, $sortdir) {
                 $course->filesize = $newsize;
             }
 
-            // sort by size manually as we cannot
-            // rely on DB sorting with live calculation
+            // Sort by size manually as we cannot
+            // rely on DB sorting with live calculation.
             if ($dosort && $sortorder == 'ssize') {
                 usort($courses, 'report_coursesize_cmp' . $sortdir);
             }
         }
 
-        foreach ($courses AS $course) {
-            $url = '=hyperlink("' . $CFG->wwwroot . '/course/view.php?id=' . $course->courseid . '", "' . $course->coursename . '")';
+        foreach ($courses as $course) {
+            $url = '=hyperlink("' . $CFG->wwwroot . '/course/view.php?id=' . $course->courseid .
+                '", "' . $course->coursename . '")';
             $totalfilesize = report_coursesize_displaysize($course->filesize, $displaysize);
             if (!empty($config->excludebackups)) {
                 if (empty($coursesnobackups[$course->courseid])) {
                     $coursesnobackups[$course->courseid]->filesize = 0;
                 }
                 $coursefilesize = report_coursesize_displaysize($coursesnobackups[$course->courseid]->filesize, $displaysize);
-                $backupfilesize = report_coursesize_displaysize($course->filesize - $coursesnobackups[$course->courseid]->filesize, $displaysize);
-                $data['course'][$course->coursecategory][$course->courseid] = array($categories[$course->coursecategory], $url, $totalfilesize, $coursefilesize, $backupfilesize);
+                $backupfilesize = report_coursesize_displaysize($course->filesize - $coursesnobackups[$course->courseid]->filesize,
+                    $displaysize);
+                $data['course'][$course->coursecategory][$course->courseid] = array($categories[$course->coursecategory], $url,
+                    $totalfilesize, $coursefilesize, $backupfilesize);
             } else {
-                $data['course'][$course->coursecategory][$course->courseid] = array($categories[$course->coursecategory], $url, $totalfilesize);
+                $data['course'][$course->coursecategory][$course->courseid] = array($categories[$course->coursecategory], $url,
+                    $totalfilesize);
             }
         }
     }
 
-    // Convert data into category based flat layout
+    // Convert data into category based flat layout.
     foreach ($data['category'] as $categoryid => $category) {
         if (!empty($data['course'][$categoryid])) {
             foreach ($data['course'][$categoryid] as $course) {
@@ -827,7 +843,7 @@ function report_coursesize_export($displaysize, $sortorder, $sortdir) {
 
 function report_coursesize_modulecalc () {
     global $DB;
-    
+
     $config = get_config('report_coursesize');
     if (!$config->showcoursecomponents) {
         return false;

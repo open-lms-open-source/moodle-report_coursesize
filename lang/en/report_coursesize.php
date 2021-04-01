@@ -20,9 +20,11 @@
  * @package    report
  * @subpackage coursesize
  * @author     Kirill Astashov <kirill.astashov@gmail.com>
- * @copyright  2012 NetSpot Pty Ltd {@link http://netspot.com.au}
+ * @copyright  Copyright (c) 2021 Open LMS (https://www.openlms.net)
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
+
+defined('MOODLE_INTERNAL') || die();
 
 $string['coursesize:view'] = 'View course size report';
 $string['pluginname'] = 'Course size';
@@ -32,13 +34,14 @@ $string['nevercap'] = 'Never';
 $string['enabledcap'] = 'Enabled';
 $string['disabledcap'] = 'Disabled';
 $string['livecalc'] = 'Live calculations: ';
+$string['taskcalculate'] = 'Calculate course sizes';
 
-// table
+// Table.
 $string['ttitle'] = 'Course Category';
 $string['tcategories'] = 'Full Category';
 $string['tcourse'] = 'Course';
 $string['tsize'] = 'Size';
-$string['tddown'] = 'Drill down this category';
+$string['tdtoggle'] = 'Toggle';
 $string['tbsize'] = 'Only Course backup size';
 $string['tcsize'] = 'Overall course size (excluding course backups)';
 $string['ttsize'] = 'Overall course size (including course backups)';
@@ -48,14 +51,13 @@ $string['totalfilesize'] = 'Total file size';
 $string['uniquefilesize'] = 'Total unique file size';
 $string['bytes'] = 'bytes';
 
-// Settings
+// Settings.
 $string['alwaysdisplaymb'] = 'Always display in MB';
 $string['alwaysdisplaymbhelp'] = 'If enabled, the course information will be always displayed in MB.';
 $string['calcmethod'] = 'Calculations';
 $string['calcmethodcron'] = 'By cron';
 $string['calcmethodlive'] = 'Live calculations';
 $string['calcmethodhelp'] = 'If calculated by cron, the report will run at the scheduled time and cache the results for later viewing.  This is recommended over live calculations, since it will only place load on your site once per day during a quiet period. Please use extra care with live calculations since heavy database queries may put high load on the DB server and slow down the whole instance. Enabling this feature on instances with more than 10,000 file records in not recommended and you are encouraged to rely on daily cron calculations.';
-$string['executeathelp'] = 'Course size calculations start time (for cron calculations). Select time when your Moodle is idle (e.g. in the night).';
 $string['showgranular'] = 'Show granular';
 $string['showgranularhelp'] = 'If enabled, a granular breakdown of files per course will be available with file size details.';
 $string['excludebackups'] = 'Exclude backups';
@@ -64,7 +66,7 @@ $string['showcoursecomponents'] = 'Show course components';
 $string['showcoursecomponentshelp'] = 'If enabled, an extra expandable option will be available show component based filesize details.';
 
 
-// Options
+// Options.
 $string['sizeauto'] = 'Auto';
 $string['sortby'] = 'Sort by: ';
 $string['ssize'] = 'Size';
@@ -75,7 +77,7 @@ $string['sortdir'] = 'Sort direction: ';
 $string['displaysize'] = 'Display sizes as: ';
 $string['excludebackup'] = 'Exclude backups: ';
 
-// Granular course file breakdown
+// Granular course file breakdown.
 $string['granularfilename'] = 'Filename';
 $string['granularfilesize'] = 'Filesize';
 $string['granularfiletype'] = 'Type';
@@ -85,10 +87,9 @@ $string['granularfilearea'] = 'File area';
 $string['granularnofiles'] = 'There are no files to view within the selected course.';
 $string['granularlink'] = 'Details';
 
-// Export
+// Export.
 $string['exporttoexcel'] = 'Export as an Excel file';
 $string['exporttocsv'] = 'Export as a CSV file';
 $string['export'] = 'Export';
 
-// BASE-3506.
 $string['privacy:metadata'] = 'The Course size plugin does not store any personal data.';

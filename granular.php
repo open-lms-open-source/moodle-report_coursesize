@@ -21,7 +21,7 @@
  * @subpackage coursesize
  * @author     Damien Bezborodov <dbezborodov@netspot.com.au>
  * @author     Kirill Astashov <kirill.astashov@gmail.com>
- * @copyright  2012-2014 NetSpot Pty Ltd {@link http://netspot.com.au}
+ * @copyright  Copyright (c) 2021 Open LMS (https://www.openlms.net)
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
@@ -30,10 +30,12 @@ require_once($CFG->libdir.'/adminlib.php');
 require_once(dirname(__file__) . '/locallib.php');
 require_login();
 require_once(dirname(__file__) . '/getoptions.php');
-admin_externalpage_setup('reportcoursesizepage', '', null, '', array('pagelayout'=>'report'));
+admin_externalpage_setup('reportcoursesizepage', '', null, '', array('pagelayout' => 'report'));
+
+require_capability('report/coursesize:view', context_system::instance());
 
 $courseid = required_param('courseid', PARAM_INT);
-$courseshortname = $DB->get_field('course','shortname',array('id' => $courseid));
+$courseshortname = $DB->get_field('course', 'shortname', array('id' => $courseid));
 
 $PAGE->navbar->add($courseshortname);
 
@@ -69,11 +71,11 @@ if ($filelist) {
         );
     }
     if ($doexcel) {
-        require_once $CFG->libdir . '/excellib.class.php';
+        require_once($CFG->libdir . '/excellib.class.php');
         $workbook = new MoodleExcelWorkbook('-');
         $workbook->send('report_coursesize-'.(str_replace('/', '_', $courseshortname).'.xlsx'));
         $worksheet = $workbook->add_worksheet(get_string('pluginname', 'report_coursesize'));
-        foreach(array_merge(array($table->head), $table->data) as $r => $row) {
+        foreach (array_merge(array($table->head), $table->data) as $r => $row) {
             foreach ($row as $c => $cell) {
                 if ($c == 5 && $r) {
                     // For the bytes column.
@@ -87,8 +89,11 @@ if ($filelist) {
     } else {
         echo $OUTPUT->header();
         echo html_writer::table($table);
-        echo html_writer::link(new moodle_url('granular.php', array('courseid' => $courseid, 'export' => 'excel')), get_string('exporttoexcel', 'report_coursesize'));
-    echo $OUTPUT->footer();
+        echo html_writer::link(
+            new moodle_url('granular.php', ['courseid' => $courseid, 'export' => 'excel']),
+            get_string('exporttoexcel', 'report_coursesize')
+        );
+        echo $OUTPUT->footer();
     }
 } else {
     echo $OUTPUT->header();
