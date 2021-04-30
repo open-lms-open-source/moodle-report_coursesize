@@ -35,6 +35,7 @@ $string['enabledcap'] = 'Enabled';
 $string['disabledcap'] = 'Disabled';
 $string['livecalc'] = 'Live calculations: ';
 $string['taskcalculate'] = 'Calculate course sizes';
+$string['tasksendreport'] = 'Send disk usage report';
 
 // Table.
 $string['ttitle'] = 'Course Category';
@@ -60,6 +61,8 @@ $string['calcmethodlive'] = 'Live calculations';
 $string['calcmethodhelp'] = 'If calculated by cron, the report will run at the scheduled time and cache the results for later viewing.  This is recommended over live calculations, since it will only place load on your site once per day during a quiet period. Please use extra care with live calculations since heavy database queries may put high load on the DB server and slow down the whole instance. Enabling this feature on instances with more than 10,000 file records in not recommended and you are encouraged to rely on daily cron calculations.';
 $string['showgranular'] = 'Show granular';
 $string['showgranularhelp'] = 'If enabled, a granular breakdown of files per course will be available with file size details.';
+$string['emailrecipients'] = 'Email recipients';
+$string['emailrecipientshelp'] = 'A comma delimited list of email addresses to send storage report to each day.';
 $string['excludebackups'] = 'Exclude backups';
 $string['excludebackupshelp'] = 'If enabled, an option will be available to exclude backups from course size details.';
 $string['showcoursecomponents'] = 'Show course components';

@@ -499,6 +499,20 @@ function report_coursesize_uniquetotalcalc($excludebackups = false) {
     return $filesize;
 }
 
+function report_coursesize_getcachevalue($contextlevel, $instanceid, $excludebackups = false) {
+    global $DB;
+
+    $table = 'report_coursesize';
+    if ($excludebackups) {
+        $table = 'report_coursesize_no_backups';
+    }
+
+    if ($record = $DB->get_record($table, ['contextlevel' => $contextlevel, 'instanceid' => $instanceid])) {
+        return $record->filesize;
+    }
+    return false;
+}
+
 /**
  * Checks if record exists in cache table and then inserts or updates.
  */

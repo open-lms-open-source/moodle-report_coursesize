@@ -62,3 +62,10 @@ $settings->add(new admin_setting_configcheckbox('report_coursesize/alwaysdisplay
                                                 $name,
                                                 $description,
                                                 0));
+
+$name = new lang_string('emailrecipients', 'report_coursesize');
+$description = new lang_string('emailrecipientshelp', 'report_coursesize');
+$settings->add(new admin_setting_configtext('report_coursesize/emailrecipients',
+                                                $name,
+                                                $description,
+                                                ''));

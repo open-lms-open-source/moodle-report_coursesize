@@ -17,7 +17,7 @@
 /**
  * Scheduled maintenance tasks.
  *
- * @package local_auto_maint
+ * @package report_coursesize
  * @author Adam Olley <adam.olley@openlms.net>
  * @copyright Copyright (c) 2021 Open LMS (https://www.openlms.net)
  * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
@@ -31,6 +31,15 @@ $tasks = [
         'blocking'  => 0,
         'minute'    => 'R',
         'hour'      => '3',
+        'day'       => '*',
+        'dayofweek' => '*',
+        'month'     => '*'
+    ],
+    [
+        'classname' => 'report_coursesize\task\send_report',
+        'blocking'  => 0,
+        'minute'    => 'R',
+        'hour'      => '7',
         'day'       => '*',
         'dayofweek' => '*',
         'month'     => '*'
