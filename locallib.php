@@ -38,14 +38,18 @@ function report_coursesize_crontask() {
     $totalsizeexcludingbackups = 0;
 
     // Delete orphaned COURSE rows from cache table.
-    $sql = "
-DELETE FROM
-        {report_coursesize}
-  USING {course} c
-  WHERE instanceid = c.id
-  AND   (contextlevel = :ctxc OR contextlevel = :ctxm)
-  AND   c.id IS NULL
-    ";
+    $sql = "DELETE rc
+              FROM {report_coursesize} rc
+         LEFT JOIN {course} c ON instanceid = c.id
+             WHERE (rc.contextlevel = :ctxc OR rc.contextlevel = :ctxm)
+               AND c.id IS NULL";
+    if ($DB->get_dbfamily() == 'postgres') {
+        $sql = "DELETE FROM {report_coursesize}
+                USING {course} c
+                WHERE instanceid = c.id
+                AND   (contextlevel = :ctxc OR contextlevel = :ctxm)
+                AND   c.id IS NULL";
+    }
     $params = array('ctxc' => CONTEXT_COURSE, 'ctxm' => CONTEXT_MODULE);
     if (!$DB->execute($sql, $params)) {
         return false;
@@ -142,16 +146,16 @@ GROUP BY id, category;
     }
 
     // Delete orphaned CATEGORY rows from cache table.
-    $sql = "
-DELETE FROM
-    {report_coursesize}
-USING
-    {course_categories} c
-WHERE
-        instanceid = c.id
-    AND contextlevel = :ctxcc
-    AND c.id IS NULL
-    ";
+    $sql = "DELETE rc
+              FROM {report_coursesize} rc
+         LEFT JOIN {course_categories} cc ON instanceid = cc.id
+             WHERE (rc.contextlevel = :ctxc OR rc.contextlevel = :ctxm)
+               AND cc.id IS NULL";
+    if ($DB->get_dbfamily() == 'postgres') {
+    $sql = "DELETE FROM {report_coursesize}
+            USING {course_categories} c
+            WHERE instanceid = c.id AND contextlevel = :ctxcc AND c.id IS NULL";
+    }
     $params = array('ctxcc' => CONTEXT_COURSECAT);
     if (!$DB->execute($sql, $params)) {
         return false;
@@ -863,7 +867,9 @@ function report_coursesize_modulecalc () {
         return false;
     }
 
-    $sql = "SELECT cm.course || '_' || f.component as blah, cm.course as id, f.component, sum(f.filesize) as filesize
+
+    $blah = $DB->sql_concat('cm.course', "'_'", 'f.component as blah');
+    $sql = "SELECT {$blah}, cm.course as id, f.component, sum(f.filesize) as filesize
               FROM {course_modules} cm
               JOIN {context} cx ON cx.contextlevel = :ctxm AND cx.instanceid = cm.id
               JOIN {files} f ON f.contextid = cx.id
