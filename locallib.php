@@ -149,7 +149,7 @@ GROUP BY id, category;
     $sql = "DELETE rc
               FROM {report_coursesize} rc
          LEFT JOIN {course_categories} cc ON instanceid = cc.id
-             WHERE (rc.contextlevel = :ctxc OR rc.contextlevel = :ctxm)
+             WHERE (rc.contextlevel = :ctxcc)
                AND cc.id IS NULL";
     if ($DB->get_dbfamily() == 'postgres') {
     $sql = "DELETE FROM {report_coursesize}
