@@ -53,15 +53,13 @@ class calculate extends \core\task\scheduled_task {
 
         require_once($CFG->dirroot.'/report/coursesize/locallib.php');
 
-        $now = time();
-
-        set_config('lastruntime', $now, 'report_coursesize');
-
         $result = report_coursesize_crontask();
         if ($result === true) {
             mtrace("Task complete");
         } else {
             mtrace("Task failed");
         }
+
+        set_config('lastruntime', time(), 'report_coursesize');
     }
 }
