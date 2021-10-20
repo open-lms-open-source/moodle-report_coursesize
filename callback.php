@@ -26,12 +26,13 @@ define('AJAX_SCRIPT', true);
 require_once('../../config.php');
 require_once(dirname(__file__) . '/locallib.php');
 require_login();
-require_once(dirname(__file__) . '/getoptions.php');
 require_once($CFG->libdir.'/filelib.php');
 $context = context_system::instance();
 $PAGE->set_context($context);
 
 require_capability('report/coursesize:view', $context);
+
+extract(\report_coursesize\local\helper::get_options());
 
 // The column where to insert the granular report icon links if enabled.
 define('REPORT_COURSESIZE_GRANULAR_COL', 2);
@@ -70,21 +71,17 @@ switch($sortdir) {
         break;
 }
 
-$coursesizetable = 'report_coursesize';
-if ($excludebackups) {
-    $coursesizetable = 'report_coursesize_no_backups';
-}
-
 $sql = '
 SELECT
         ct.id AS catid,
         ct.name AS catname,
         ct.parent AS catparent,
         ct.sortorder AS sortorder,
-        rc.filesize as filesize
+        rc.filesize AS filesize,
+        rc.backupsize AS backupsize
 FROM
         {course_categories} ct
-        LEFT JOIN {' . $coursesizetable . '} rc ON ct.id = rc.instanceid AND rc.contextlevel = :ctxcc
+        LEFT JOIN {report_coursesize} rc ON ct.id = rc.instanceid AND rc.contextlevel = :ctxcc
 WHERE
         ct.parent = :id';
 $sql .= ' ORDER BY ' . $orderby;
@@ -157,7 +154,10 @@ if ($cats = $DB->get_records_sql($sql, $params)) {
         }
         $divicon = html_writer::tag('div', $icon, array('id' => 'icon'.$cat->catid));
         $title = html_writer::tag('strong', $cat->catname);
-        $filesize = report_coursesize_displaysize($cat->filesize, $displaysize);
+
+        $rawsize = $excludebackups ? $cat->filesize - $cat->backupsize : $cat->filesize;
+
+        $filesize = report_coursesize_displaysize($rawsize, $displaysize);
         $size = html_writer::tag('strong', $filesize);
         $table->data[] = array($divicon, $title, $size);
         if (!empty($config->showgranular)) {
@@ -165,7 +165,7 @@ if ($cats = $DB->get_records_sql($sql, $params)) {
         }
         $out .= html_writer::table($table);
         $out .= html_writer::tag('div', '', array('style' => "display:none", 'id' => 'cat'.$cat->catid));
-        $totalsize += $cat->filesize;
+        $totalsize += $rawsize;
     }
 }
 
@@ -206,10 +206,11 @@ SELECT
         c.shortname AS courseshortname,
         c.sortorder AS sortorder,
         c.category AS coursecategory,
-        rc.filesize as filesize
+        rc.filesize as filesize,
+        rc.backupsize AS backupsize
 FROM
         {course} c
-        LEFT JOIN {" . $coursesizetable . "} rc ON c.id = rc.instanceid AND rc.contextlevel = :ctxc
+        LEFT JOIN {report_coursesize} rc ON c.id = rc.instanceid AND rc.contextlevel = :ctxc
 WHERE
         c.category = :id";
 $sql .= " ORDER BY " . $orderby;
@@ -244,7 +245,8 @@ if ($courses = $DB->get_records_sql($sql, $params)) {
         $title = html_writer::tag('a', $course->coursename . " ({$course->courseshortname})", array(
             'href' => $CFG->wwwroot . '/course/view.php?id=' . $course->courseid,
         ));
-        $size = report_coursesize_displaysize($course->filesize, $displaysize);
+        $rawsize = $excludebackups ? $course->filesize - $course->backupsize : $course->filesize;
+        $size = report_coursesize_displaysize($rawsize, $displaysize);
         $data = report_coursesize_modulestats($course->courseid, $displaysize, $excludebackups);
         $expandstr = get_string('tdtoggle', 'report_coursesize');
         if (!empty($data)) {
@@ -290,7 +292,7 @@ if ($courses = $DB->get_records_sql($sql, $params)) {
             $out .= html_writer::end_tag('div');
         }
 
-        $totalsize += $course->filesize;
+        $totalsize += $rawsize;
     }
 }
 
@@ -299,8 +301,8 @@ $out = html_writer::tag('div', $out, array('style' => 'margin-left: 25px;'));
 // We are displaying the main table (Moodle root), so let's print some additional info.
 if (!$id) {
     // Get user files.
-    if ($DB->record_exists($coursesizetable, array('contextlevel' => 0, 'instanceid' => 1))) {
-        $row = $DB->get_record($coursesizetable, array('contextlevel' => 0, 'instanceid' => 1));
+    if ($DB->record_exists('report_coursesize', array('contextlevel' => 0, 'instanceid' => 1))) {
+        $row = $DB->get_record('report_coursesize', array('contextlevel' => 0, 'instanceid' => 1));
         $totalsize += $row->filesize;
         $usersize = $row->filesize;
     } else {
@@ -325,8 +327,8 @@ if (!$id) {
 
     // Get and output total unique file size (may differ from $totalsize since
     // Moodle file storage does not duplicate identical files).
-    if ($DB->record_exists($coursesizetable, array('contextlevel' => 0, 'instanceid' => 2))) {
-        $row = $DB->get_record($coursesizetable, array('contextlevel' => 0, 'instanceid' => 2));
+    if ($DB->record_exists('report_coursesize', array('contextlevel' => 0, 'instanceid' => 2))) {
+        $row = $DB->get_record('report_coursesize', array('contextlevel' => 0, 'instanceid' => 2));
         $uniquefilesize = $row->filesize;
     } else {
         if ($config->calcmethod == 'live') {

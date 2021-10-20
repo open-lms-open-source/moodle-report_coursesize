@@ -25,7 +25,7 @@
 defined('MOODLE_INTERNAL') || die();
 
 function xmldb_report_coursesize_upgrade($oldversion) {
-    global $CFG, $DB;
+    global $DB;
 
     $dbman = $DB->get_manager();
 
@@ -54,6 +54,23 @@ function xmldb_report_coursesize_upgrade($oldversion) {
         $dbman->install_one_table_from_xmldb_file(__DIR__.'/install.xml', 'report_coursesize_components');
 
         upgrade_plugin_savepoint(true, 2015081400, 'report', 'coursesize');
+    }
+
+    if ($oldversion < 2021102000) {
+        $table = new xmldb_table('report_coursesize_no_backups');
+        if ($dbman->table_exists($table)) {
+            $dbman->drop_table($table);
+        }
+
+        $table = new xmldb_table('report_coursesize');
+        $field = new xmldb_field('backupsize', XMLDB_TYPE_INTEGER, '15', null, XMLDB_NOTNULL, null, 0);
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+        $field = new xmldb_field('autobackupsize', XMLDB_TYPE_INTEGER, '15', null, XMLDB_NOTNULL, null, 0);
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
     }
 
     return true;

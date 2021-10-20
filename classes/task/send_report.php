@@ -65,6 +65,11 @@ class send_report extends \core\task\scheduled_task {
             'total' => report_coursesize_getcachevalue(0, 0, true),
             'unique' => report_coursesize_getcachevalue(0, 2, true),
         ];
+        $statsnoautobackups = [
+            'user' => report_coursesize_getcachevalue(0, 1, false, true),
+            'total' => report_coursesize_getcachevalue(0, 0, false, true),
+            'unique' => report_coursesize_getcachevalue(0, 2, false, true),
+        ];
 
         $subject = "Storage Monitor Report for {$siteidentifier} ($formatteddate)";
         $body = "Storage Monitor Report\n";
@@ -79,6 +84,16 @@ class send_report extends \core\task\scheduled_task {
         }
         $body .= "\nExcluding course backup files:\n\n";
         foreach ($statsnobackups as $key => $value) {
+            if ($value === false) {
+                continue;
+            }
+            $value = report_coursesize_displaysize($value, 'mb');
+            $body .= get_string("{$key}filesize", 'report_coursesize').": {$value}\n";
+        }
+        $body .= "\n";
+
+        $body .= "\nExcluding automated backup files:\n\n";
+        foreach ($statsnoautobackups as $key => $value) {
             if ($value === false) {
                 continue;
             }

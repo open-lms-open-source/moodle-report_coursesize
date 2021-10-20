@@ -29,7 +29,7 @@ require_once('../../config.php');
 require_once($CFG->libdir.'/adminlib.php');
 require_once(dirname(__file__) . '/locallib.php');
 require_login();
-require_once(dirname(__file__) . '/getoptions.php');
+extract(\report_coursesize\local\helper::get_options());
 admin_externalpage_setup('reportcoursesizepage', '', null, '', array('pagelayout' => 'report'));
 
 require_capability('report/coursesize:view', context_system::instance());
@@ -100,7 +100,3 @@ if ($filelist) {
     echo get_string('granularnofiles', 'report_coursesize');
     echo $OUTPUT->footer();
 }
-
-
-
-

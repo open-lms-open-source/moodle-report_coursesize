@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<XMLDB PATH="report/coursesize/db" VERSION="2012070200" COMMENT="XMLDB file for Moodle report/coursesize"
+<XMLDB PATH="report/coursesize/db" VERSION="2021101900" COMMENT="XMLDB file for Moodle report/coursesize"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:noNamespaceSchemaLocation="../../../lib/xmldb/xmldb.xsd"
 >
@@ -10,6 +10,8 @@
         <FIELD NAME="contextlevel" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="Context level (course, category etc.)"/>
         <FIELD NAME="instanceid" TYPE="int" LENGTH="11" NOTNULL="true" SEQUENCE="false" COMMENT="Course/category etc. id"/>
         <FIELD NAME="filesize" TYPE="int" LENGTH="15" NOTNULL="true" SEQUENCE="false" COMMENT="Context size in bytes"/>
+        <FIELD NAME="backupsize" TYPE="int" LENGTH="15" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Context size of all backups in bytes"/>
+        <FIELD NAME="autobackupsize" TYPE="int" LENGTH="15" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Context size of all automated backups in bytes"/>
       </FIELDS>
       <KEYS>
         <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
@@ -17,21 +19,6 @@
 	  <INDEXES>
         <INDEX NAME="contextlevel" FIELDS="contextlevel" UNIQUE="false" NEXT="instanceid"/>
         <INDEX NAME="instanceid" FIELDS="instanceid" UNIQUE="false" PREVIOUS="contextlevel"/>
-      </INDEXES>
-    </TABLE>
-    <TABLE NAME="report_coursesize_no_backups" COMMENT="Coursesize calculations cache without backups.">
-      <FIELDS>
-        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
-        <FIELD NAME="contextlevel" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="Context level (course, category etc.)"/>
-        <FIELD NAME="instanceid" TYPE="int" LENGTH="11" NOTNULL="true" SEQUENCE="false" COMMENT="Course/category etc. id"/>
-        <FIELD NAME="filesize" TYPE="int" LENGTH="15" NOTNULL="true" SEQUENCE="false" COMMENT="Context size in bytes"/>
-      </FIELDS>
-      <KEYS>
-        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
-      </KEYS>
-	  <INDEXES>
-        <INDEX NAME="contextlevel" FIELDS="contextlevel" UNIQUE="false"/>
-        <INDEX NAME="instanceid" FIELDS="instanceid" UNIQUE="false"/>
       </INDEXES>
     </TABLE>
     <TABLE NAME="report_coursesize_components" COMMENT="Coursesize calculations cache per course component.">

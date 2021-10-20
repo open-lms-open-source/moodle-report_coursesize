@@ -30,118 +30,93 @@ defined('MOODLE_INTERNAL') || die();
  * Calculates and caches course and category sizes
  */
 function report_coursesize_crontask() {
-    global $CFG, $DB;
+    global $DB;
 
     set_time_limit(0);
 
     $totalsize = 0;
     $totalsizeexcludingbackups = 0;
+    $totalsizeexcludingautobackups = 0;
 
     // Delete orphaned COURSE rows from cache table.
     $sql = "DELETE rc
               FROM {report_coursesize} rc
          LEFT JOIN {course} c ON instanceid = c.id
-             WHERE (rc.contextlevel = :ctxc OR rc.contextlevel = :ctxm)
+             WHERE (rc.contextlevel = :ctxc)
                AND c.id IS NULL";
     if ($DB->get_dbfamily() == 'postgres') {
         $sql = "DELETE FROM {report_coursesize}
                 USING {course} c
                 WHERE instanceid = c.id
-                AND   (contextlevel = :ctxc OR contextlevel = :ctxm)
+                AND   (contextlevel = :ctxc)
                 AND   c.id IS NULL";
     }
-    $params = array('ctxc' => CONTEXT_COURSE, 'ctxm' => CONTEXT_MODULE);
+    $params = array('ctxc' => CONTEXT_COURSE);
     if (!$DB->execute($sql, $params)) {
         return false;
     }
 
-    // Delete orphaned COURSE rows from no backups cache table.
-    $sql = str_replace('report_coursesize', 'report_coursesize_no_backups', $sql);
-    if (!$DB->execute($sql, $params)) {
-        return false;
-    }
-
+    $fileconcat = $DB->sql_concat('x.id', "':'", 'x.component', "':'", 'x.filearea');
     // Get COURSE sizes and populate db.
-    $sql = "
-SELECT id AS id, category AS category, SUM(filesize) AS filesize
-FROM (
-        SELECT c.id, c.category, f.filesize
-        FROM {course} c
-        JOIN {context} cx ON cx.contextlevel = :ctxc1 AND cx.instanceid = c.id
-        JOIN {files} f ON f.contextid = cx.id
-    UNION ALL
-        SELECT c.id, c.category, f.filesize
-        FROM {block_instances} bi
-        JOIN {context} cx1 ON cx1.contextlevel = :ctxb AND cx1.instanceid = bi.id
-        JOIN {context} cx2 ON cx2.contextlevel = :ctxc2 AND cx2.id = bi.parentcontextid
-        JOIN {course} c ON c.id = cx2.instanceid
-        JOIN {files} f ON f.contextid = cx1.id
-    UNION ALL
-        SELECT c.id, c.category, f.filesize
-        FROM {course_modules} cm
-        JOIN {context} cx ON cx.contextlevel = :ctxm AND cx.instanceid = cm.id
-        JOIN {course} c ON c.id = cm.course
-        JOIN {files} f ON f.contextid = cx.id
-) x
-GROUP BY id, category;
-";
-
+    $sql = "SELECT $fileconcat AS concat, id, category, component, filearea, SUM(filesize) AS filesize
+            FROM (
+                SELECT c.id, c.category, f.component, f.filearea, f.filesize
+                FROM {course} c
+                JOIN {context} cx ON cx.contextlevel = :ctxc1 AND cx.instanceid = c.id
+                JOIN {files} f ON f.contextid = cx.id
+                UNION ALL
+                    SELECT c.id, c.category, f.component, f.filearea, f.filesize
+                    FROM {block_instances} bi
+                    JOIN {context} cx1 ON cx1.contextlevel = :ctxb AND cx1.instanceid = bi.id
+                    JOIN {context} cx2 ON cx2.contextlevel = :ctxc2 AND cx2.id = bi.parentcontextid
+                    JOIN {course} c ON c.id = cx2.instanceid
+                    JOIN {files} f ON f.contextid = cx1.id
+                UNION ALL
+                    SELECT c.id, c.category, f.component, f.filearea, f.filesize
+                    FROM {course_modules} cm
+                    JOIN {context} cx ON cx.contextlevel = :ctxm AND cx.instanceid = cm.id
+                    JOIN {course} c ON c.id = cm.course
+                    JOIN {files} f ON f.contextid = cx.id
+            ) x
+            GROUP BY concat, id, category, component, filearea
+            ORDER BY id ASC";
     $params = array('ctxc1' => CONTEXT_COURSE, 'ctxc2' => CONTEXT_COURSE, 'ctxm' => CONTEXT_MODULE, 'ctxb' => CONTEXT_BLOCK);
-    if (($courses = $DB->get_records_sql($sql, $params)) === false) {
-        mtrace('Failed to query course file sizes. Aborting...');
-        return false;
-    }
+    $courses = $DB->get_recordset_sql($sql, $params);
 
-    // Get COURSE sizes with no backups and populate db.
-    $sql = "
-SELECT id AS id, category AS category, SUM(filesize) AS filesize
-FROM (
-        SELECT c.id, c.category, f.filesize
-        FROM {course} c
-        JOIN {context} cx ON cx.contextlevel = :ctxc1 AND cx.instanceid = c.id
-        JOIN {files} f ON f.contextid = cx.id AND component != 'backup'
-    UNION ALL
-        SELECT c.id, c.category, f.filesize
-        FROM {block_instances} bi
-        JOIN {context} cx1 ON cx1.contextlevel = :ctxb AND cx1.instanceid = bi.id
-        JOIN {context} cx2 ON cx2.contextlevel = :ctxc2 AND cx2.id = bi.parentcontextid
-        JOIN {course} c ON c.id = cx2.instanceid
-        JOIN {files} f ON f.contextid = cx1.id
-    UNION ALL
-        SELECT c.id, c.category, f.filesize
-        FROM {course_modules} cm
-        JOIN {context} cx ON cx.contextlevel = :ctxm AND cx.instanceid = cm.id
-        JOIN {course} c ON c.id = cm.course
-        JOIN {files} f ON f.contextid = cx.id
-) x
-GROUP BY id, category;
-";
-
-    $params = array('ctxc1' => CONTEXT_COURSE, 'ctxc2' => CONTEXT_COURSE, 'ctxm' => CONTEXT_MODULE, 'ctxb' => CONTEXT_BLOCK);
-    if (($courseexcludingbackups = $DB->get_records_sql($sql, $params)) === false) {
-        mtrace('Failed to query course file sizes. Aborting...');
-        return false;
-    }
-
-    $coursesizecache = array();
-    $coursesizeexcludingbackupscache = array();
+    $coursesizecache = [];
+    $componentsizecache = [];
     foreach ($courses as $course) {
-        if (!report_coursesize_storecacherow(CONTEXT_COURSE, $course->id, $course->filesize, false)) {
+        if (!isset($coursesizecache[$course->id])) {
+            $coursesizecache[$course->id] = [0, 0, 0];
+        }
+        if (!isset($componentsizecache[$course->id][$course->component])) {
+            $componentsizecache[$course->id][$course->component] = 0;
+        }
+
+        $coursesizecache[$course->id][0] += $course->filesize;
+        $componentsizecache[$course->id][$course->component] += $course->filesize;
+
+        if ($course->component == 'backup') {
+            $coursesizecache[$course->id][1] += $course->filesize;
+        }
+        if ($course->component == 'backup' && $course->filearea == 'automated') {
+            $coursesizecache[$course->id][2] += $course->filesize;
+        }
+    }
+    $courses->close();
+
+    foreach ($coursesizecache as $courseid => $filesizes) {
+        if (!report_coursesize_storecacherow(CONTEXT_COURSE, $courseid, $filesizes[0], $filesizes[1], $filesizes[2])) {
             return false;
         }
-        if (!empty($courseexcludingbackups[$course->id]) &&
-            !report_coursesize_storecacherow(
-                CONTEXT_COURSE,
-                $courseexcludingbackups[$course->id]->id,
-                $courseexcludingbackups[$course->id]->filesize, true)
-            ) {
-            return false;
-        }
-        $totalsize += $course->filesize;
-        $coursesizecache[$course->id] = $course->filesize;
-        if (!empty($courseexcludingbackups[$course->id])) {
-            $totalsizeexcludingbackups += $courseexcludingbackups[$course->id]->filesize;
-            $coursesizeexcludingbackupscache[$course->id] = $courseexcludingbackups[$course->id]->filesize;
+        $totalsize += $filesizes[0];
+        $totalsizeexcludingbackups += $filesizes[1];
+        $totalsizeexcludingautobackups += $filesizes[2];
+    }
+
+    foreach ($componentsizecache as $courseid => $data) {
+        foreach ($data as $component => $filesize) {
+            report_coursesize_storecomponentcacherow($component, $courseid, $filesize);
         }
     }
 
@@ -152,17 +127,11 @@ GROUP BY id, category;
              WHERE (rc.contextlevel = :ctxcc)
                AND cc.id IS NULL";
     if ($DB->get_dbfamily() == 'postgres') {
-    $sql = "DELETE FROM {report_coursesize}
-            USING {course_categories} c
-            WHERE instanceid = c.id AND contextlevel = :ctxcc AND c.id IS NULL";
+        $sql = "DELETE FROM {report_coursesize}
+                USING {course_categories} c
+                WHERE instanceid = c.id AND contextlevel = :ctxcc AND c.id IS NULL";
     }
     $params = array('ctxcc' => CONTEXT_COURSECAT);
-    if (!$DB->execute($sql, $params)) {
-        return false;
-    }
-
-    // Delete orphaned CATEGORY rows from no backups cache table.
-    $sql = str_replace('report_coursesize', 'report_coursesize_no_backups', $sql);
     if (!$DB->execute($sql, $params)) {
         return false;
     }
@@ -189,35 +158,24 @@ WHERE
     }
 
     // Second, add up course sizes (which we already have) to their categories.
-    $catsizecache = array();
-    $catsizeexcludingbackupscache = array();
+    $catsizecache = [];
     foreach ($cats as $cat) {
         if (!isset($catsizecache[$cat->catid])) {
-            $catsizecache[$cat->catid] = 0;
-        }
-        if (!isset($catsizeexcludingbackupscache[$cat->catid])) {
-            $catsizeexcludingbackupscache[$cat->catid] = 0;
+            $catsizecache[$cat->catid] = [0, 0, 0];
         }
         if (isset($coursesizecache[$cat->courseid])) {
-            $catsizecache[$cat->catid] += $coursesizecache[$cat->courseid];
-        }
-        if (isset($coursesizeexcludingbackupscache[$cat->courseid])) {
-            $catsizeexcludingbackupscache[$cat->catid] += $coursesizeexcludingbackupscache[$cat->courseid];
+            $catsizecache[$cat->catid][0] += $coursesizecache[$cat->courseid][0];
+            $catsizecache[$cat->catid][1] += $coursesizecache[$cat->courseid][1];
+            $catsizecache[$cat->catid][2] += $coursesizecache[$cat->courseid][2];
         }
     }
 
     // Populate db.
     foreach ($cats as $cat) {
-        if (!report_coursesize_storecacherow(CONTEXT_COURSECAT, $cat->catid, $catsizecache[$cat->catid], false)) {
-            return false;
-        }
-        if (!report_coursesize_storecacherow(CONTEXT_COURSECAT, $cat->catid, $catsizeexcludingbackupscache[$cat->catid], true)) {
+        if (!report_coursesize_storecacherow(CONTEXT_COURSECAT, $cat->catid, $catsizecache[$cat->catid][0], $catsizecache[$cat->catid][1], $catsizecache[$cat->catid][2])) {
             return false;
         }
     }
-
-    // Calculate and update component results.
-    $modulecalc = report_coursesize_modulecalc();
 
     // Calculate and update user total, add results to totalsize.
     $usercalc = report_coursesize_usercalc();
@@ -232,22 +190,12 @@ WHERE
     }
 
     // Update grand total.
-    if (!report_coursesize_storecacherow(0, 0, $totalsize, false)) {
-        return false;
-    }
-
-    // Update grand total without backups.
-    if (!report_coursesize_storecacherow(0, 0, $totalsizeexcludingbackups, true)) {
+    if (!report_coursesize_storecacherow(0, 0, $totalsize, $totalsizeexcludingbackups, $totalsizeexcludingautobackups)) {
         return false;
     }
 
     // Calculate and update unique grand total.
-    if (report_coursesize_uniquetotalcalc(false) === false) {
-        return false;
-    }
-
-    // Calculate and update unique grand total without backups.
-    if (report_coursesize_uniquetotalcalc(true) === false) {
+    if (report_coursesize_uniquetotalcalc() === false) {
         return false;
     }
 
@@ -277,10 +225,11 @@ WHERE
     $params = array('ctxc' => CONTEXT_COURSE, 'ctxcc' => CONTEXT_COURSECAT, 'id' => $catid);
     $rows = $DB->get_records_sql($sql, $params);
     if ($rows === false || count($rows) == 0) {
-        if (!report_coursesize_storecacherow(CONTEXT_COURSECAT, $catid, 0, false)) {
+        // The category has no courses - record 0 for filesizes.
+        if (!report_coursesize_storecacherow(CONTEXT_COURSECAT, $catid, 0, 0, 0)) {
             return false;
         }
-        if (!report_coursesize_storecacherow(CONTEXT_COURSECAT, $catid, 0, true)) {
+        if (!report_coursesize_storecacherow(CONTEXT_COURSECAT, $catid, 0, 0, 0)) {
             return false;
         }
         return 0;
@@ -295,46 +244,53 @@ WHERE
     // Second, get total size of those courses.
     list($insql, $params) = $DB->get_in_or_equal($courseids);
     $params = array_merge($params, $params, $params);
-    $excludebackupssql = '';
+    $fileconcat = $DB->sql_concat('id', "':'", 'component', "':'", 'filearea');
+    $sql = "SELECT $fileconcat AS concat, component, filearea, SUM(filesize) AS filesize
+            FROM (
+                SELECT c.id, f.component, f.filearea, f.filesize AS filesize
+                FROM {course} c
+                JOIN {context} cx ON cx.contextlevel = ".CONTEXT_COURSE." AND cx.instanceid = c.id
+                JOIN {files} f ON f.contextid = cx.id
+                WHERE c.id $insql
+                UNION ALL
+                    SELECT c.id, f.component, f.filearea, f.filesize AS filesize
+                    FROM {block_instances} bi
+                    JOIN {context} cx1 ON cx1.contextlevel = ".CONTEXT_BLOCK." AND cx1.instanceid = bi.id
+                    JOIN {context} cx2 ON cx2.contextlevel = ".CONTEXT_COURSE." AND cx2.id = bi.parentcontextid
+                    JOIN {course} c ON c.id = cx2.instanceid
+                    JOIN {files} f ON f.contextid = cx1.id
+                    WHERE c.id $insql
+                UNION ALL
+                    SELECT c.id, f.component, f.filearea, f.filesize AS filesize
+                    FROM {course_modules} cm
+                    JOIN {context} cx ON cx.contextlevel = ".CONTEXT_MODULE." AND cx.instanceid = cm.id
+                    JOIN {course} c ON c.id = cm.course
+                    JOIN {files} f ON f.contextid = cx.id
+                    WHERE c.id $insql
+            ) x
+            GROUP BY concat, component, filearea";
+    $cats = $DB->get_recordset_sql($sql, $params);
+
+    $sizecache = [0, 0, 0];
+    foreach ($cats as $cat) {
+        $sizecache[0] += $cat->filesize;
+        if ($cat->component == 'backup') {
+            $sizecache[1] += $cat->filesize;
+        }
+        if ($cat->component == 'backup' && $cat->filearea == 'automated') {
+            $sizecache[2] += $cat->filesize;
+        }
+    }
+    $cats->close();
+
+    if (!report_coursesize_storecacherow(CONTEXT_COURSECAT, $catid, $sizecache[0], $sizecache[1], $sizecache[2])) {
+        return false;
+    }
+
     if ($excludebackups) {
-        $excludebackupssql = " AND component != 'backup'";
+        return $sizecache[0] - $sizecache[1];
     }
-    $sql = "
-SELECT SUM(filesize) AS filesize
-FROM (
-        SELECT f.filesize AS filesize
-        FROM {course} c
-        JOIN {context} cx ON cx.contextlevel = 50 AND cx.instanceid = c.id
-        JOIN {files} f ON f.contextid = cx.id
-        WHERE c.id $insql $excludebackupssql
-    UNION ALL
-        SELECT f.filesize AS filesize
-        FROM {block_instances} bi
-        JOIN {context} cx1 ON cx1.contextlevel = 80 AND cx1.instanceid = bi.id
-        JOIN {context} cx2 ON cx2.contextlevel = 50 AND cx2.id = bi.parentcontextid
-        JOIN {course} c ON c.id = cx2.instanceid
-        JOIN {files} f ON f.contextid = cx1.id
-        WHERE c.id $insql
-    UNION ALL
-        SELECT f.filesize AS filesize
-        FROM {course_modules} cm
-        JOIN {context} cx ON cx.contextlevel = 70 AND cx.instanceid = cm.id
-        JOIN {course} c ON c.id = cm.course
-        JOIN {files} f ON f.contextid = cx.id
-        WHERE c.id $insql
-) x
-";
-    $row = $DB->get_record_sql($sql, $params);
-    if ($row === false) {
-        return false;
-    }
-    if (!report_coursesize_storecacherow(CONTEXT_COURSECAT, $catid, $row->filesize, $excludebackups)) {
-        return false;
-    }
-    if (strval($row->filesize) == '') {
-        $row->filesize = 0;
-    }
-    return $row->filesize;
+    return $sizecache[0];
 }
 
 /**
@@ -383,6 +339,7 @@ ORDER BY x.filesize DESC
         'courseid3' => $courseid,
     );
     $filelist = $DB->get_records_sql($sql, $params);
+
     if (!$filelist) {
         return false;
     }
@@ -392,50 +349,58 @@ ORDER BY x.filesize DESC
 /**
  * Calculates size of a single course.
  */
-function report_coursesize_coursecalc($courseid, $excludebackups = false) {
+function report_coursesize_coursecalc($courseid, $excludebackups = false): int {
     global $DB;
 
-    $excludebackupssql = '';
-    if ($excludebackups) {
-        $excludebackupssql = " AND component != 'backup'";
-    }
-    $sql = "
-SELECT SUM(filesize) AS filesize
-FROM (
-        SELECT f.filesize AS filesize
-        FROM {course} c
-        JOIN {context} cx ON cx.contextlevel = 50 AND cx.instanceid = c.id
-        JOIN {files} f ON f.contextid = cx.id
-        WHERE c.id = :id1 $excludebackupssql
-    UNION ALL
-        SELECT f.filesize AS filesize
-        FROM {block_instances} bi
-        JOIN {context} cx1 ON cx1.contextlevel = 80 AND cx1.instanceid = bi.id
-        JOIN {context} cx2 ON cx2.contextlevel = 50 AND cx2.id = bi.parentcontextid
-        JOIN {course} c ON c.id = cx2.instanceid
-        JOIN {files} f ON f.contextid = cx1.id
-        WHERE c.id = :id2
-    UNION ALL
-        SELECT f.filesize AS filesize
-        FROM {course_modules} cm
-        JOIN {context} cx ON cx.contextlevel = 70 AND cx.instanceid = cm.id
-        JOIN {course} c ON c.id = cm.course
-        JOIN {files} f ON f.contextid = cx.id
-        WHERE c.id = :id3
-) x
-";
+    $fileconcat = $DB->sql_concat('component', "':'", 'filearea');
+    $sql = "SELECT $fileconcat AS concat, component, filearea, SUM(filesize) AS filesize
+            FROM (
+                SELECT f.component, f.filearea, f.filesize AS filesize
+                FROM {course} c
+                JOIN {context} cx ON cx.contextlevel = ".CONTEXT_COURSE." AND cx.instanceid = c.id
+                JOIN {files} f ON f.contextid = cx.id
+                WHERE c.id = :id1
+            UNION ALL
+                SELECT f.component, f.filearea, f.filesize AS filesize
+                FROM {block_instances} bi
+                JOIN {context} cx1 ON cx1.contextlevel = ".CONTEXT_BLOCK." AND cx1.instanceid = bi.id
+                JOIN {context} cx2 ON cx2.contextlevel = ".CONTEXT_COURSE." AND cx2.id = bi.parentcontextid
+                JOIN {course} c ON c.id = cx2.instanceid
+                JOIN {files} f ON f.contextid = cx1.id
+                WHERE c.id = :id2
+            UNION ALL
+                SELECT f.component, f.filearea, f.filesize AS filesize
+                FROM {course_modules} cm
+                JOIN {context} cx ON cx.contextlevel = ".CONTEXT_MODULE." AND cx.instanceid = cm.id
+                JOIN {course} c ON c.id = cm.course
+                JOIN {files} f ON f.contextid = cx.id
+                WHERE c.id = :id3
+            ) x
+            GROUP BY concat, component, filearea";
 
-    $course = $DB->get_record_sql($sql, array('id1' => $courseid, 'id2' => $courseid, 'id3' => $courseid));
+    $course = $DB->get_records_sql($sql, array('id1' => $courseid, 'id2' => $courseid, 'id3' => $courseid));
     if (!$course) {
         return false;
     }
-    if (!report_coursesize_storecacherow(CONTEXT_COURSE, $courseid, $course->filesize, $excludebackups)) {
+
+    $sizecache = [0, 0, 0];
+    foreach ($course as $record) {
+        $sizecache[0] += $record->filesize;
+        if ($record->component == 'backup') {
+            $sizecache[1] += $record->filesize;
+        }
+        if ($record->component == 'backup' && $record->filearea == 'automated') {
+            $sizecache[2] += $record->filesize;
+        }
+    }
+
+    if (!report_coursesize_storecacherow(CONTEXT_COURSE, $courseid, $sizecache[0], $sizecache[1], $sizecache[2])) {
         return false;
     }
-    if (strval($course->filesize) == '') {
-        $course->filesize = 0;
+    if ($excludebackups) {
+        return $sizecache[0] - $sizecache[1];
     }
-    return $course->filesize;
+    return $sizecache[0];
 }
 
 /**
@@ -444,30 +409,34 @@ FROM (
 function report_coursesize_usercalc($excludebackups = false) {
     global $DB;
 
-    $sql = "
-SELECT
-        SUM(fs.filesize) as filesize
-FROM
-        {context} cx
-        LEFT JOIN {files} fs ON fs.contextid = cx.id
-WHERE
-        cx.contextlevel = " . CONTEXT_USER . "
-    ";
+    $sql = "SELECT fs.filearea, SUM(fs.filesize) as filesize
+            FROM {context} cx
+            LEFT JOIN {files} fs ON fs.contextid = cx.id
+            WHERE cx.contextlevel = ".CONTEXT_USER."
+            GROUP BY fs.filearea";
+    $rows = $DB->get_records_sql($sql);
+    if (empty($rows)) {
+        report_coursesize_storecacherow(0, 1, 0, 0);
+        return 0;
+    }
+
+    $filesize = 0;
+    $backupsize = 0;
+    foreach ($rows as $row) {
+        $filesize += $row->filesize;
+        if ($row->filearea == 'backup') {
+            $backupsize += $row->filesize;
+        }
+    }
+
+    if (!report_coursesize_storecacherow(0, 1, $filesize, $backupsize, 0)) {
+        return false;
+    }
+
     if ($excludebackups) {
-        $sql .= " AND filearea != 'backup'";
+        return (int)($filesize - $backupsize);
     }
-    $row = $DB->get_record_sql($sql);
-    if ($row === false) {
-        return false;
-    }
-    $filesize = $row->filesize;
-    if (strval($filesize) == '') {
-        $filesize = 0;
-    }
-    if (!report_coursesize_storecacherow(0, 1, $filesize, $excludebackups)) {
-        return false;
-    }
-    return $filesize;
+    return (int)$filesize;
 }
 
 /**
@@ -476,43 +445,72 @@ WHERE
 function report_coursesize_uniquetotalcalc($excludebackups = false) {
     global $DB;
 
-    $sql = "SELECT SUM(filesize) AS filesize
+    $sql = "SELECT SUM(fs.filesize) AS filesize
             FROM (
                 SELECT DISTINCT(f.contenthash), f.filesize AS filesize
                 FROM {files} f
             ) fs";
-    if ($excludebackups) {
-        $sql = "SELECT SUM(filesize) AS filesize
-                FROM (
-                    SELECT DISTINCT(f.contenthash), f.filesize AS filesize
-                    FROM {files} f
-                    WHERE component != 'backup' AND filearea != 'backup'
-                ) fs";
-    }
-    $row = $DB->get_record_sql($sql, array());
+    $row = $DB->get_record_sql($sql);
     if ($row === false) {
         return false;
     }
+
     $filesize = $row->filesize;
     if (strval($filesize) == '') {
         $filesize = 0;
     }
-    if (!report_coursesize_storecacherow(0, 2, $filesize, $excludebackups)) {
+
+    // Backups - that aren't also normal files.
+    $sql = "SELECT SUM(fs.filesize) AS filesize
+    FROM (
+        SELECT DISTINCT(f.contenthash), f.filesize AS filesize
+        FROM {files} f
+        WHERE f.id IN (
+            SELECT f.id
+            FROM {files}
+            WHERE f.component = 'backup'
+        )
+    ) fs";
+    $row = $DB->get_record_sql($sql);
+    $backupsize = $row->filesize;
+    if (strval($backupsize) == '') {
+        $backupsize = 0;
+    }
+
+    // Auto backups - that aren't also normal files.
+    $sql = "SELECT SUM(fs.filesize) AS filesize
+    FROM (
+        SELECT DISTINCT(f.contenthash), f.filesize AS filesize
+        FROM {files} f
+        WHERE f.id IN (
+            SELECT f.id
+            FROM {files}
+            WHERE f.component = 'backup' AND f.filearea = 'automated'
+        )
+    ) fs";
+    $row = $DB->get_record_sql($sql);
+    $autobackupsize = $row->filesize;
+    if (strval($autobackupsize) == '') {
+        $autobackupsize = 0;
+    }
+
+    if (!report_coursesize_storecacherow(0, 2, $filesize, $backupsize, $autobackupsize)) {
         return false;
     }
-    return $filesize;
+    return $excludebackups ? (int)$filesize - (int)$backupsize : (int)$filesize;
 }
 
-function report_coursesize_getcachevalue($contextlevel, $instanceid, $excludebackups = false) {
+function report_coursesize_getcachevalue($contextlevel, $instanceid, $excludebackups = false, $excludeautobackups = false) {
     global $DB;
 
-    $table = 'report_coursesize';
-    if ($excludebackups) {
-        $table = 'report_coursesize_no_backups';
-    }
-
-    if ($record = $DB->get_record($table, ['contextlevel' => $contextlevel, 'instanceid' => $instanceid])) {
-        return $record->filesize;
+    if ($record = $DB->get_record('report_coursesize', ['contextlevel' => $contextlevel, 'instanceid' => $instanceid])) {
+        $value = $record->filesize;
+        if ($excludebackups) {
+            $value -= $record->backupsize;
+        } else if ($excludeautobackups) {
+            $value -= $record->autobackupsize;
+        }
+        return $value;
     }
     return false;
 }
@@ -520,28 +518,27 @@ function report_coursesize_getcachevalue($contextlevel, $instanceid, $excludebac
 /**
  * Checks if record exists in cache table and then inserts or updates.
  */
-function report_coursesize_storecacherow($contextlevel, $instanceid, $filesize, $excludebackups = false) {
+function report_coursesize_storecacherow($contextlevel, $instanceid, $filesize = 0, $backupsize = 0, $autobackupsize = 0) {
     global $DB;
     $r = new stdClass();
     $r->contextlevel = $contextlevel;
     $r->instanceid = $instanceid;
     $r->filesize = $filesize;
+    $r->backupsize = $backupsize;
+    $r->autobackupsize = $autobackupsize;
     if (strval($r->filesize) == '') {
         $r->filesize = 0;
     }
-    $table = 'report_coursesize';
-    if ($excludebackups) {
-        $table = 'report_coursesize_no_backups';
-    }
-    if ($er = $DB->get_record($table, array('contextlevel' => $r->contextlevel, 'instanceid' => $r->instanceid))) {
-        if (strval($er->filesize) != $r->filesize) {
+
+    if ($er = $DB->get_record('report_coursesize', array('contextlevel' => $r->contextlevel, 'instanceid' => $r->instanceid))) {
+        if ($er->filesize != $r->filesize || $er->backupsize != $r->backupsize || $er->autobackupsize != $r->autobackupsize) {
             $r->id = $er->id;
-            if (!($DB->update_record($table, $r))) {
+            if (!($DB->update_record('report_coursesize', $r))) {
                 return false;
             }
         }
     } else {
-        if (!($DB->insert_record($table, $r))) {
+        if (!($DB->insert_record('report_coursesize', $r))) {
             return false;
         }
     }
@@ -679,33 +676,18 @@ function report_coursesize_export($displaysize, $sortorder, $sortdir) {
     }
 
     $params = array('ctxcc' => CONTEXT_COURSECAT);
-    if (!empty($config->excludebackups)) {
-        $coursesizetable = 'report_coursesize_no_backups';
-        $sql = '
-        SELECT
-                ct.id AS catid,
-                ct.name AS catname,
-                ct.parent AS catparent,
-                ct.sortorder AS sortorder,
-                rc.filesize as filesize
-        FROM
-                {course_categories} ct
-                LEFT JOIN {' . $coursesizetable . '} rc ON ct.id = rc.instanceid AND rc.contextlevel = :ctxcc';
-        $sql .= ' ORDER BY ' . $orderby;
-        $catsnobackups = $DB->get_records_sql($sql, $params);
-    }
 
-    $coursesizetable = 'report_coursesize';
     $sql = '
     SELECT
             ct.id AS catid,
             ct.name AS catname,
             ct.parent AS catparent,
             ct.sortorder AS sortorder,
-            rc.filesize as filesize
+            rc.filesize as filesize,
+            rc.backupsize AS backupsize
     FROM
             {course_categories} ct
-            LEFT JOIN {' . $coursesizetable . '} rc ON ct.id = rc.instanceid AND rc.contextlevel = :ctxcc';
+            LEFT JOIN {report_coursesize} rc ON ct.id = rc.instanceid AND rc.contextlevel = :ctxcc';
     $sql .= ' ORDER BY ' . $orderby;
 
     if ($cats = $DB->get_records_sql($sql, $params)) {
@@ -730,12 +712,8 @@ function report_coursesize_export($displaysize, $sortorder, $sortdir) {
             $url = '=hyperlink("' . $CFG->wwwroot . '/course/category.php?id=' . $cat->catid . '", "' . $cat->catname . '")';
             $totalfilesize = report_coursesize_displaysize($cat->filesize, $displaysize);
             if (!empty($config->excludebackups)) {
-                if (empty($catsnobackups[$cat->catid])) {
-                    $catsnobackups[$cat->catid]->filesize = 0;
-                }
-                $coursefilesize = report_coursesize_displaysize($catsnobackups[$cat->catid]->filesize, $displaysize);
-                $backupfilesize = report_coursesize_displaysize($cat->filesize - $catsnobackups[$cat->catid]->filesize,
-                    $displaysize);
+                $coursefilesize = report_coursesize_displaysize($cat->filesize - $cat->backupsize, $displaysize);
+                $backupfilesize = report_coursesize_displaysize($cat->backupsize, $displaysize);
                 $data['category'][$cat->catid] = array($url, $totalfilesize, $coursefilesize, $backupfilesize);
             } else {
                 $data['category'][$cat->catid] = array($url, $totalfilesize);
@@ -774,25 +752,8 @@ function report_coursesize_export($displaysize, $sortorder, $sortdir) {
     }
 
     $params = array('ctxc' => CONTEXT_COURSE);
-    if (!empty($config->excludebackups)) {
-        $coursesizetable = 'report_coursesize_no_backups';
-        $sql = "
-        SELECT
-                c.id AS courseid,
-                c.fullname AS coursename,
-                c.shortname AS courseshortname,
-                c.sortorder AS sortorder,
-                c.category AS coursecategory,
-                rc.filesize as filesize
-        FROM
-                {course} c
-                LEFT JOIN {" . $coursesizetable . "} rc ON c.id = rc.instanceid AND rc.contextlevel = :ctxc";
-
-        $coursesnobackups = $DB->get_records_sql($sql, $params);
-    }
-
     $sql .= " ORDER BY " . $orderby;
-    $coursesizetable = 'report_coursesize';
+
     $sql = "
     SELECT
             c.id AS courseid,
@@ -800,10 +761,11 @@ function report_coursesize_export($displaysize, $sortorder, $sortdir) {
             c.shortname AS courseshortname,
             c.sortorder AS sortorder,
             c.category AS coursecategory,
-            rc.filesize as filesize
+            rc.filesize AS filesize,
+            rc.backupsize AS backupsize
     FROM
             {course} c
-            LEFT JOIN {" . $coursesizetable . "} rc ON c.id = rc.instanceid AND rc.contextlevel = :ctxc";
+            LEFT JOIN {report_coursesize} rc ON c.id = rc.instanceid AND rc.contextlevel = :ctxc";
     $sql .= " ORDER BY " . $orderby;
     $categories = core_course_category::make_categories_list('', 0);
     $categories[0] = '/';
@@ -832,12 +794,8 @@ function report_coursesize_export($displaysize, $sortorder, $sortdir) {
                 '", "' . $course->coursename . '")';
             $totalfilesize = report_coursesize_displaysize($course->filesize, $displaysize);
             if (!empty($config->excludebackups)) {
-                if (empty($coursesnobackups[$course->courseid])) {
-                    $coursesnobackups[$course->courseid]->filesize = 0;
-                }
-                $coursefilesize = report_coursesize_displaysize($coursesnobackups[$course->courseid]->filesize, $displaysize);
-                $backupfilesize = report_coursesize_displaysize($course->filesize - $coursesnobackups[$course->courseid]->filesize,
-                    $displaysize);
+                $coursefilesize = report_coursesize_displaysize($course->filesize - $course->backupsize, $displaysize);
+                $backupfilesize = report_coursesize_displaysize($course->backupsize, $displaysize);
                 $data['course'][$course->coursecategory][$course->courseid] = array($categories[$course->coursecategory], $url,
                     $totalfilesize, $coursefilesize, $backupfilesize);
             } else {
@@ -859,7 +817,7 @@ function report_coursesize_export($displaysize, $sortorder, $sortdir) {
     return $output;
 }
 
-function report_coursesize_modulecalc () {
+function report_coursesize_modulecalc() {
     global $DB;
 
     $config = get_config('report_coursesize');
@@ -867,14 +825,24 @@ function report_coursesize_modulecalc () {
         return false;
     }
 
+    $concat = $DB->sql_concat('c.id', "'_'", 'f.component');
+    $pathconcat = $DB->sql_concat('cx1.path', "'/'", "'%'");
+    $sql = "SELECT $concat AS concat, c.id, f.component, SUM(filesize) as filesize
+            FROM {course} c
+            JOIN {context} cx1 ON cx1.contextlevel = :ctxc1 AND cx1.instanceid = c.id
+            JOIN {context} cx2 ON cx2.contextlevel >= :ctxc2 AND (cx2.path = cx1.path OR cx2.path LIKE $pathconcat)
+            JOIN {files} f ON f.contextid = cx2.id
+            GROUP BY concat, c.id, f.component";
+    $params = array('ctxc1' => CONTEXT_COURSE, 'ctxc2' => CONTEXT_COURSE);
 
-    $blah = $DB->sql_concat('cm.course', "'_'", 'f.component as blah');
+    $blah = $DB->sql_concat('cm.course', "'_'", 'f.component AS blah');
     $sql = "SELECT {$blah}, cm.course as id, f.component, sum(f.filesize) as filesize
               FROM {course_modules} cm
               JOIN {context} cx ON cx.contextlevel = :ctxm AND cx.instanceid = cm.id
               JOIN {files} f ON f.contextid = cx.id
              GROUP BY cm.course, f.component";
     $params = array('ctxm' => CONTEXT_MODULE);
+
     $data = $DB->get_records_sql($sql, $params);
     foreach ($data as $row) {
         report_coursesize_storecomponentcacherow($row->component, $row->id, $row->filesize);
@@ -883,7 +851,7 @@ function report_coursesize_modulecalc () {
     return true;
 }
 
-function report_coursesize_modulestats($id, $displaysize) {
+function report_coursesize_modulestats($id, $displaysize, $excludebackups) {
     global $DB;
 
     $data = array();
@@ -896,6 +864,9 @@ function report_coursesize_modulestats($id, $displaysize) {
     $sql = 'SELECT *
               FROM {report_coursesize_components} rcc
              WHERE courseid = :id';
+    if ($excludebackups) {
+        $sql .= " AND component != 'backup'";
+    }
     $params = array('id' => $id);
     if ($modules = $DB->get_records_sql($sql, $params)) {
         foreach ($modules as $module) {
