@@ -210,21 +210,18 @@ function report_coursesize_catcalc($catid, $excludebackups = false) {
 
     // First, get the list of courses nested under the category
     // we have to make the first column unique.
-    $sql = "
-SELECT
-        " . $DB->sql_concat('ct.id', "'_'", 'cx.instanceid') . " AS blah, ct.id AS catid, cx.instanceid AS courseid
-FROM
-        {course_categories} ct
-        JOIN {context} ctx ON ctx.instanceid = ct.id
-        LEFT JOIN {context} cx ON ( cx.path LIKE " . $DB->sql_concat('ctx.path', "'/%'") . " )
-WHERE
-        ctx.contextlevel = :ctxcc
-    AND cx.contextlevel =  :ctxc
-    AND ct.id = :id
-";
-    $params = array('ctxc' => CONTEXT_COURSE, 'ctxcc' => CONTEXT_COURSECAT, 'id' => $catid);
-    $rows = $DB->get_records_sql($sql, $params);
-    if ($rows === false || count($rows) == 0) {
+    $pathconcat = $DB->sql_concat('ctx.path', "'/%'");
+    $coursesql = "SELECT cx.instanceid AS courseid, ct.id AS catid
+            FROM {course_categories} ct
+            JOIN {context} ctx ON ctx.instanceid = ct.id
+            LEFT JOIN {context} cx ON ( cx.path LIKE {$pathconcat} )
+            WHERE ctx.contextlevel = ? AND cx.contextlevel = ? AND ct.id = ?";
+    $params = [
+        CONTEXT_COURSECAT,
+        CONTEXT_COURSE,
+        $catid,
+    ];
+    if ($DB->count_records_sql("SELECT count(1) FROM ($coursesql) x", $params) == 0) {
         // The category has no courses - record 0 for filesizes.
         if (!report_coursesize_storecacherow(CONTEXT_COURSECAT, $catid, 0, 0, 0)) {
             return false;
@@ -235,14 +232,7 @@ WHERE
         return 0;
     }
 
-    // Get couseids as array.
-    $courseids = array();
-    foreach ($rows as $row) {
-        $courseids[] = $row->courseid;
-    }
-
     // Second, get total size of those courses.
-    list($insql, $params) = $DB->get_in_or_equal($courseids);
     $params = array_merge($params, $params, $params);
     $fileconcat = $DB->sql_concat('id', "':'", 'component', "':'", 'filearea');
     $sql = "SELECT $fileconcat AS concat, component, filearea, SUM(filesize) AS filesize
@@ -251,7 +241,7 @@ WHERE
                 FROM {course} c
                 JOIN {context} cx ON cx.contextlevel = ".CONTEXT_COURSE." AND cx.instanceid = c.id
                 JOIN {files} f ON f.contextid = cx.id
-                WHERE c.id $insql
+                WHERE c.id IN (SELECT courseid FROM ($coursesql) x)
                 UNION ALL
                     SELECT c.id, f.component, f.filearea, f.filesize AS filesize
                     FROM {block_instances} bi
@@ -259,14 +249,14 @@ WHERE
                     JOIN {context} cx2 ON cx2.contextlevel = ".CONTEXT_COURSE." AND cx2.id = bi.parentcontextid
                     JOIN {course} c ON c.id = cx2.instanceid
                     JOIN {files} f ON f.contextid = cx1.id
-                    WHERE c.id $insql
+                    WHERE c.id IN (SELECT courseid FROM ($coursesql) x)
                 UNION ALL
                     SELECT c.id, f.component, f.filearea, f.filesize AS filesize
                     FROM {course_modules} cm
                     JOIN {context} cx ON cx.contextlevel = ".CONTEXT_MODULE." AND cx.instanceid = cm.id
                     JOIN {course} c ON c.id = cm.course
                     JOIN {files} f ON f.contextid = cx.id
-                    WHERE c.id $insql
+                    WHERE c.id IN (SELECT courseid FROM ($coursesql) x)
             ) x
             GROUP BY concat, component, filearea";
     $cats = $DB->get_recordset_sql($sql, $params);
