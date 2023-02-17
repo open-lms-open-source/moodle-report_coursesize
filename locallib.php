@@ -825,7 +825,7 @@ function report_coursesize_modulecalc() {
             GROUP BY concat, c.id, f.component";
     $params = array('ctxc1' => CONTEXT_COURSE, 'ctxc2' => CONTEXT_COURSE);
 
-    $blah = $DB->sql_concat('cm.course', "'_'", 'f.component AS blah');
+    $blah = $DB->sql_concat('cm.course', "'_'", 'f.component') . ' AS blah';
     $sql = "SELECT {$blah}, cm.course as id, f.component, sum(f.filesize) as filesize
               FROM {course_modules} cm
               JOIN {context} cx ON cx.contextlevel = :ctxm AND cx.instanceid = cm.id
