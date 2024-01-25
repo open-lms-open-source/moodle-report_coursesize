@@ -38,7 +38,7 @@ function report_coursesize_crontask() {
     $totalsizeexcludingbackups = 0;
     $totalsizeexcludingautobackups = 0;
 
-    // Delete orphaned COURSE rows from cache table.
+    // Delete orphaned COURSE rows from cache tables.
     $sql = "DELETE rc
               FROM {report_coursesize} rc
          LEFT JOIN {course} c ON instanceid = c.id
@@ -53,6 +53,22 @@ function report_coursesize_crontask() {
     }
     $params = array('ctxc' => CONTEXT_COURSE);
     if (!$DB->execute($sql, $params)) {
+        return false;
+    }
+
+    $sql = "DELETE rcc
+              FROM {report_coursesize_components} rcc
+         LEFT JOIN {course} c ON instanceid = c.id
+             WHERE c.id IS NULL";
+    if ($DB->get_dbfamily() == 'postgres') {
+        $sql = "DELETE FROM {report_coursesize_components} rcc
+                WHERE NOT EXISTS (
+                  SELECT id
+                  FROM {course} c
+                  WHERE rcc.courseid = c.id
+                )";
+    }
+    if (!$DB->execute($sql)) {
         return false;
     }
 
@@ -535,6 +551,18 @@ function report_coursesize_storecacherow($contextlevel, $instanceid, $filesize =
     return true;
 }
 
+function report_coursesize_getcomponentcachecomponents($courseid) {
+    global $DB;
+
+    $components = [];
+    if ($list = $DB->get_records('report_coursesize_components', ['courseid' => $courseid], '', 'id, component')) {
+        foreach ($list as $entry) {
+            $components[] = $entry->component;
+        }
+    }
+    return $components;
+}
+
 /**
  * Checks if component record exists in cache table and then inserts or updates.
  */
@@ -815,30 +843,61 @@ function report_coursesize_modulecalc() {
         return false;
     }
 
-    $concat = $DB->sql_concat('c.id', "'_'", 'f.component');
-    $pathconcat = $DB->sql_concat('cx1.path', "'/'", "'%'");
-    $sql = "SELECT $concat AS concat, c.id, f.component, SUM(filesize) as filesize
-            FROM {course} c
-            JOIN {context} cx1 ON cx1.contextlevel = :ctxc1 AND cx1.instanceid = c.id
-            JOIN {context} cx2 ON cx2.contextlevel >= :ctxc2 AND (cx2.path = cx1.path OR cx2.path LIKE $pathconcat)
-            JOIN {files} f ON f.contextid = cx2.id
-            GROUP BY concat, c.id, f.component";
-    $params = array('ctxc1' => CONTEXT_COURSE, 'ctxc2' => CONTEXT_COURSE);
-
     $blah = $DB->sql_concat('cm.course', "'_'", 'f.component') . ' AS blah';
     $sql = "SELECT {$blah}, cm.course as id, f.component, sum(f.filesize) as filesize
               FROM {course_modules} cm
               JOIN {context} cx ON cx.contextlevel = :ctxm AND cx.instanceid = cm.id
               JOIN {files} f ON f.contextid = cx.id
-             GROUP BY cm.course, f.component";
+             GROUP BY cm.course, f.component
+             ORDER BY cm.course";
     $params = array('ctxm' => CONTEXT_MODULE);
 
     $data = $DB->get_records_sql($sql, $params);
+
+    $currentcourseid = null;
+    $components = [];
+
     foreach ($data as $row) {
+        if ($currentcourseid === null) {
+            $currentcourseid = $row->id;
+        }
+
+        if ($currentcourseid != $row->id) {
+            // We've hit a new course. Compare component lists and delete any now empty.
+            report_coursesize_purgeoldcomponents($currentcourseid, $components);
+
+            // Ready for next course.
+            $currentcourseid = $row->id;
+            $components = [];
+        }
+
+        $components[] = $row->component;
         report_coursesize_storecomponentcacherow($row->component, $row->id, $row->filesize);
     }
 
+    if ($currentcourseid !== null) {
+        report_coursesize_purgeoldcomponents($currentcourseid, $components);
+    }
+
+    // No component records at all.
+    if (empty($data)) {
+        $DB->delete_records('report_coursesize_components');
+    }
+
     return true;
+}
+
+function report_coursesize_purgeoldcomponents($courseid, $components) {
+    global $DB;
+
+    $fullcomponentlist = report_coursesize_getcomponentcachecomponents($courseid);
+    $todelete = array_diff($fullcomponentlist, $components);
+    if (! empty($todelete)) {
+        [$insql, $params] = $DB->get_in_or_equal($todelete, SQL_PARAMS_NAMED);
+        $select = "component $insql AND courseid = :courseid";
+        $params['courseid'] = $courseid;
+        $DB->delete_records_select('report_coursesize_components', $select, $params);
+    }
 }
 
 function report_coursesize_modulestats($id, $displaysize, $excludebackups) {

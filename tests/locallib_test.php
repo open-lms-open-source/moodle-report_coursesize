@@ -219,4 +219,70 @@ class report_coursesize_locallib_test extends advanced_testcase {
         $this->resetAfterTest(true);
         $this->assertTrue(is_int(report_coursesize_uniquetotalcalc()));
     }
+
+    public function test_deleting_content_components() {
+        global $DB;
+        $this->resetAfterTest(true);
+
+        set_config('showcoursecomponents', 1, 'report_coursesize');
+
+        $course = $this->getDataGenerator()->create_course();
+        $assign = $this->getDataGenerator()->create_module('assign', ['course' => $course->id]);
+        $modcontext = context_module::instance($assign->cmid);
+
+        // Add some random file to the mod.
+        $content = $this->createfile($modcontext->id, 'mod_assign', 'data');
+
+        report_coursesize_modulecalc();
+        $record = $DB->get_record('report_coursesize_components', ['component' => 'mod_assign']);
+        $this->assertEquals($content, $record->filesize);
+
+        $fs = get_file_storage();
+        $fs->delete_area_files($modcontext->id, 'mod_assign');
+
+        // With the area now empty, verify component cache size is empty.
+        report_coursesize_modulecalc();
+        $record = $DB->get_record('report_coursesize_components', ['component' => 'mod_assign']);
+        $this->assertFalse($record);
+
+        $contenta = $this->createfile($modcontext->id, 'mod_assign', 'data');
+        $contentf = $this->createfile($modcontext->id, 'mod_forum', 'data');
+
+        report_coursesize_modulecalc();
+        $total = 0;
+        foreach ($DB->get_records('report_coursesize_components') as $row) {
+            $total += $row->filesize;
+        }
+        $this->assertEquals($contenta + $contentf, $total);
+
+        $fs = get_file_storage();
+        $fs->delete_area_files($modcontext->id, 'mod_assign');
+
+        // With the area now empty, verify component cache size is empty.
+        report_coursesize_modulecalc();
+        $total = 0;
+        foreach ($DB->get_records('report_coursesize_components') as $row) {
+            $total += $row->filesize;
+        }
+        $this->assertEquals($contentf, $total);
+    }
+
+    public function test_deleting_content_courses() {
+        global $DB;
+        $this->resetAfterTest(true);
+
+        $course = $this->getDataGenerator()->create_course();
+        $assign = $this->getDataGenerator()->create_module('assign', ['course' => $course->id]);
+        $modcontext = context_module::instance($assign->cmid);
+        $this->createfile($modcontext->id, 'mod_assign', 'data');
+
+        report_coursesize_crontask();
+        $records = $DB->get_records('report_coursesize_components');
+        $this->assertNotEmpty($records);
+
+        delete_course($course->id, false);
+        report_coursesize_crontask();
+        $records = $DB->get_records('report_coursesize_components');
+        $this->assertEmpty($records);
+    }
 }
