@@ -710,20 +710,22 @@ function report_coursesize_export($displaysize, $sortorder, $sortdir) {
 
     if ($cats = $DB->get_records_sql($sql, $params)) {
 
-        // Recalculate.
-        $dosort = false;
-        foreach ($cats as $cat) {
-            $newsize = report_coursesize_catcalc($cat->catid);
-            if (!$dosort && $cat->filesize != $newsize) {
-                $dosort = true;
+        if ($config->calcmethod == 'live') {
+            // Recalculate.
+            $dosort = false;
+            foreach ($cats as $cat) {
+                $newsize = report_coursesize_catcalc($cat->catid);
+                if (!$dosort && $cat->filesize != $newsize) {
+                    $dosort = true;
+                }
+                $cat->filesize = $newsize;
             }
-            $cat->filesize = $newsize;
-        }
 
-        // Sort by size manually as we cannot
-        // rely on DB sorting with live calculation.
-        if ($dosort && $sortorder == 'ssize') {
-            usort($cats, 'report_coursesize_cmp' . $sortdir);
+            // Sort by size manually as we cannot
+            // rely on DB sorting with live calculation.
+            if ($dosort && $sortorder == 'ssize') {
+                usort($cats, 'report_coursesize_cmp' . $sortdir);
+            }
         }
 
         foreach ($cats as $cat) {
