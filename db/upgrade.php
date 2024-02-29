@@ -71,6 +71,8 @@ function xmldb_report_coursesize_upgrade($oldversion) {
         if (!$dbman->field_exists($table, $field)) {
             $dbman->add_field($table, $field);
         }
+
+        upgrade_plugin_savepoint(true, 2021102000, 'report', 'coursesize');
     }
 
     return true;
