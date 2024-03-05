@@ -58,7 +58,7 @@ function report_coursesize_crontask() {
 
     $sql = "DELETE rcc
               FROM {report_coursesize_components} rcc
-         LEFT JOIN {course} c ON instanceid = c.id
+         LEFT JOIN {course} c ON rcc.courseid = c.id
              WHERE c.id IS NULL";
     if ($DB->get_dbfamily() == 'postgres') {
         $sql = "DELETE FROM {report_coursesize_components} rcc
