@@ -153,7 +153,7 @@ if ($cats = $DB->get_records_sql($sql, $params)) {
             $icon = $OUTPUT->render($pix);
         }
         $divicon = html_writer::tag('div', $icon, ['id' => 'icon'.$cat->catid]);
-        $title = html_writer::tag('strong', $cat->catname);
+        $title = html_writer::tag('strong', s($cat->catname));
 
         $rawsize = $opts['excludebackups'] ? $cat->filesize - $cat->backupsize : $cat->filesize;
 
@@ -242,7 +242,7 @@ if ($courses = $DB->get_records_sql($sql, $params)) {
         $table->width = '100%';
         $table->size = ['22px', '', '130px'];
         $table->attributes = ['style' => 'margin-bottom: 0;'];
-        $title = html_writer::tag('a', $course->coursename . " ({$course->courseshortname})", [
+        $title = html_writer::tag('a', s($course->coursename) . " (".s($course->courseshortname).")", [
             'href' => $CFG->wwwroot . '/course/view.php?id=' . $course->courseid,
         ]);
         $rawsize = $opts['excludebackups'] ? $course->filesize - $course->backupsize : $course->filesize;

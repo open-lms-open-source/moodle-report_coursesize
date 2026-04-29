@@ -61,7 +61,7 @@ if ($filelist) {
             $fileinfo->filename = str_replace('_', '_&#8203;', $fileinfo->filename);
         }
         $table->data[] = [
-            $fileinfo->filename,
+            s($fileinfo->filename),
             @array_pop(explode('.', $fileinfo->filename)),
             $fileinfo->component,
             $fileinfo->filearea,
