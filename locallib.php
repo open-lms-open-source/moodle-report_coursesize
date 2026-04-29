@@ -343,9 +343,9 @@ ORDER BY x.filesize DESC
         'contextmodule' => CONTEXT_MODULE,
         'courseid3' => $courseid,
     ];
-    $filelist = $DB->get_records_sql($sql, $params);
+    $filelist = $DB->get_recordset_sql($sql, $params);
 
-    if (!$filelist) {
+    if (!$filelist->valid()) {
         return false;
     }
     return $filelist;
@@ -865,7 +865,7 @@ function report_coursesize_modulecalc() {
              ORDER BY cm.course";
     $params = ['ctxm' => CONTEXT_MODULE];
 
-    $data = $DB->get_records_sql($sql, $params);
+    $data = $DB->get_recordset_sql($sql, $params);
 
     $currentcourseid = null;
     $components = [];
