@@ -737,14 +737,13 @@ function report_coursesize_export($displaysize, $sortorder, $sortdir) {
         }
 
         foreach ($cats as $cat) {
-            $url = '=hyperlink("' . $CFG->wwwroot . '/course/category.php?id=' . $cat->catid . '", "' . $cat->catname . '")';
             $totalfilesize = report_coursesize_displaysize($cat->filesize, $displaysize);
             if (!empty($config->excludebackups)) {
                 $coursefilesize = report_coursesize_displaysize($cat->filesize - $cat->backupsize, $displaysize);
                 $backupfilesize = report_coursesize_displaysize($cat->backupsize, $displaysize);
-                $data['category'][$cat->catid] = [$url, $totalfilesize, $coursefilesize, $backupfilesize];
+                $data['category'][$cat->catid] = [$totalfilesize, $coursefilesize, $backupfilesize];
             } else {
-                $data['category'][$cat->catid] = [$url, $totalfilesize];
+                $data['category'][$cat->catid] = [$totalfilesize];
             }
         }
     }
