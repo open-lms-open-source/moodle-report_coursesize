@@ -24,14 +24,11 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-$capabilities = array(
-
-    'report/coursesize:view' => array(
+$capabilities = [
+    'report/coursesize:view' => [
         'riskbitmask' => 0,
         'captype' => 'read',
         'contextlevel' => CONTEXT_SYSTEM,
-        'archetypes' => array(
-        ),
-    ),
-
-);
+        'archetypes' => [],
+    ],
+];

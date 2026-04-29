@@ -24,8 +24,6 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Calculates and caches course and category sizes
  */
@@ -51,7 +49,7 @@ function report_coursesize_crontask() {
                 AND   (contextlevel = :ctxc)
                 AND   c.id IS NULL";
     }
-    $params = array('ctxc' => CONTEXT_COURSE);
+    $params = ['ctxc' => CONTEXT_COURSE];
     if (!$DB->execute($sql, $params)) {
         return false;
     }
@@ -96,7 +94,7 @@ function report_coursesize_crontask() {
             ) x
             GROUP BY concat, id, category, component, filearea
             ORDER BY id ASC";
-    $params = array('ctxc1' => CONTEXT_COURSE, 'ctxc2' => CONTEXT_COURSE, 'ctxm' => CONTEXT_MODULE, 'ctxb' => CONTEXT_BLOCK);
+    $params = ['ctxc1' => CONTEXT_COURSE, 'ctxc2' => CONTEXT_COURSE, 'ctxm' => CONTEXT_MODULE, 'ctxb' => CONTEXT_BLOCK];
     $courses = $DB->get_recordset_sql($sql, $params);
 
     $coursesizecache = [];
@@ -147,7 +145,7 @@ function report_coursesize_crontask() {
                 USING {course_categories} c
                 WHERE instanceid = c.id AND contextlevel = :ctxcc AND c.id IS NULL";
     }
-    $params = array('ctxcc' => CONTEXT_COURSECAT);
+    $params = ['ctxcc' => CONTEXT_COURSECAT];
     if (!$DB->execute($sql, $params)) {
         return false;
     }
@@ -167,7 +165,7 @@ WHERE
     AND cx.contextlevel =  :ctxc
 ";
 
-    $params = array('ctxc' => CONTEXT_COURSE, 'ctxcc' => CONTEXT_COURSECAT);
+    $params = ['ctxc' => CONTEXT_COURSE, 'ctxcc' => CONTEXT_COURSECAT];
     if (($cats = $DB->get_records_sql($sql, $params)) === false) {
         mtrace('Failed to query categories. Aborting...');
         return false;
@@ -188,7 +186,8 @@ WHERE
 
     // Populate db.
     foreach ($cats as $cat) {
-        if (!report_coursesize_storecacherow(CONTEXT_COURSECAT, $cat->catid, $catsizecache[$cat->catid][0], $catsizecache[$cat->catid][1], $catsizecache[$cat->catid][2])) {
+        if (!report_coursesize_storecacherow(CONTEXT_COURSECAT, $cat->catid,
+            $catsizecache[$cat->catid][0], $catsizecache[$cat->catid][1], $catsizecache[$cat->catid][2])) {
             return false;
         }
     }
@@ -335,7 +334,7 @@ SELECT x.id, x.filesize, x.filename, x.component, x.filearea, x.userid FROM (
 ORDER BY x.filesize DESC
 ";
 
-    $params = array(
+    $params = [
         'contextcourse1' => CONTEXT_COURSE,
         'courseid1' => $courseid,
         'contextblock' => CONTEXT_BLOCK,
@@ -343,7 +342,7 @@ ORDER BY x.filesize DESC
         'courseid2' => $courseid,
         'contextmodule' => CONTEXT_MODULE,
         'courseid3' => $courseid,
-    );
+    ];
     $filelist = $DB->get_records_sql($sql, $params);
 
     if (!$filelist) {
@@ -384,7 +383,7 @@ function report_coursesize_coursecalc($courseid, $excludebackups = false): int {
             ) x
             GROUP BY concat, component, filearea";
 
-    $course = $DB->get_records_sql($sql, array('id1' => $courseid, 'id2' => $courseid, 'id3' => $courseid));
+    $course = $DB->get_records_sql($sql, ['id1' => $courseid, 'id2' => $courseid, 'id3' => $courseid]);
     if (!$course) {
         return false;
     }
@@ -506,6 +505,9 @@ function report_coursesize_uniquetotalcalc($excludebackups = false) {
     return $excludebackups ? (int)$filesize - (int)$backupsize : (int)$filesize;
 }
 
+/**
+ * Fetch a cached filesize value for a given context.
+ */
 function report_coursesize_getcachevalue($contextlevel, $instanceid, $excludebackups = false, $excludeautobackups = false) {
     global $DB;
 
@@ -536,7 +538,7 @@ function report_coursesize_storecacherow($contextlevel, $instanceid, $filesize =
         $r->filesize = 0;
     }
 
-    if ($er = $DB->get_record('report_coursesize', array('contextlevel' => $r->contextlevel, 'instanceid' => $r->instanceid))) {
+    if ($er = $DB->get_record('report_coursesize', ['contextlevel' => $r->contextlevel, 'instanceid' => $r->instanceid])) {
         if ($er->filesize != $r->filesize || $er->backupsize != $r->backupsize || $er->autobackupsize != $r->autobackupsize) {
             $r->id = $er->id;
             if (!($DB->update_record('report_coursesize', $r))) {
@@ -551,6 +553,9 @@ function report_coursesize_storecacherow($contextlevel, $instanceid, $filesize =
     return true;
 }
 
+/**
+ * Get the sizes for all components in a course.
+ */
 function report_coursesize_getcomponentcachecomponents($courseid) {
     global $DB;
 
@@ -576,7 +581,7 @@ function report_coursesize_storecomponentcacherow($component, $courseid, $filesi
         $r->filesize = 0;
     }
     $table = 'report_coursesize_components';
-    if ($er = $DB->get_record($table, array('component' => $r->component, 'courseid' => $r->courseid))) {
+    if ($er = $DB->get_record($table, ['component' => $r->component, 'courseid' => $r->courseid])) {
         if (strval($er->filesize) != $r->filesize) {
             $r->id = $er->id;
             if (!($DB->update_record($table, $r))) {
@@ -645,6 +650,9 @@ function report_coursesize_cmpasc($a, $b) {
     return ($a->filesize < $b->filesize) ? -1 : 1;
 }
 
+/**
+ * Sort by filesize descending.
+ */
 function report_coursesize_cmpdesc($a, $b) {
     if ($a->filesize == $b->filesize) {
         return 0;
@@ -663,8 +671,8 @@ function report_coursesize_export($displaysize, $sortorder, $sortdir) {
     global $CFG, $DB;
 
     $config = get_config('report_coursesize');
-    $data = array();
-    $output = array();
+    $data = [];
+    $output = [];
 
     switch($sortorder) {
         case 'salphan':
@@ -693,7 +701,7 @@ function report_coursesize_export($displaysize, $sortorder, $sortdir) {
             break;
     }
 
-    $params = array('ctxcc' => CONTEXT_COURSECAT);
+    $params = ['ctxcc' => CONTEXT_COURSECAT];
 
     $sql = '
     SELECT
@@ -734,9 +742,9 @@ function report_coursesize_export($displaysize, $sortorder, $sortdir) {
             if (!empty($config->excludebackups)) {
                 $coursefilesize = report_coursesize_displaysize($cat->filesize - $cat->backupsize, $displaysize);
                 $backupfilesize = report_coursesize_displaysize($cat->backupsize, $displaysize);
-                $data['category'][$cat->catid] = array($url, $totalfilesize, $coursefilesize, $backupfilesize);
+                $data['category'][$cat->catid] = [$url, $totalfilesize, $coursefilesize, $backupfilesize];
             } else {
-                $data['category'][$cat->catid] = array($url, $totalfilesize);
+                $data['category'][$cat->catid] = [$url, $totalfilesize];
             }
         }
     }
@@ -771,7 +779,7 @@ function report_coursesize_export($displaysize, $sortorder, $sortdir) {
             break;
     }
 
-    $params = array('ctxc' => CONTEXT_COURSE);
+    $params = ['ctxc' => CONTEXT_COURSE];
     $sql .= " ORDER BY " . $orderby;
 
     $sql = "
@@ -838,6 +846,9 @@ function report_coursesize_export($displaysize, $sortorder, $sortdir) {
     return $output;
 }
 
+/**
+ * Calculate storage used at the component level.
+ */
 function report_coursesize_modulecalc() {
     global $DB;
 
@@ -853,7 +864,7 @@ function report_coursesize_modulecalc() {
               JOIN {files} f ON f.contextid = cx.id
              GROUP BY cm.course, f.component
              ORDER BY cm.course";
-    $params = array('ctxm' => CONTEXT_MODULE);
+    $params = ['ctxm' => CONTEXT_MODULE];
 
     $data = $DB->get_records_sql($sql, $params);
 
@@ -890,6 +901,9 @@ function report_coursesize_modulecalc() {
     return true;
 }
 
+/**
+ * Remove calculated data for components that have been removed.
+ */
 function report_coursesize_purgeoldcomponents($courseid, $components) {
     global $DB;
 
@@ -903,10 +917,13 @@ function report_coursesize_purgeoldcomponents($courseid, $components) {
     }
 }
 
+/**
+ * Get component stats for a course.
+ */
 function report_coursesize_modulestats($id, $displaysize, $excludebackups) {
     global $DB;
 
-    $data = array();
+    $data = [];
 
     $config = get_config('report_coursesize');
     if (!$config->showcoursecomponents) {
@@ -919,11 +936,11 @@ function report_coursesize_modulestats($id, $displaysize, $excludebackups) {
     if ($excludebackups) {
         $sql .= " AND component != 'backup'";
     }
-    $params = array('id' => $id);
+    $params = ['id' => $id];
     if ($modules = $DB->get_records_sql($sql, $params)) {
         foreach ($modules as $module) {
             $size = report_coursesize_displaysize($module->filesize, $displaysize);
-            $data[] = array('', $module->component, $size);
+            $data[] = ['', $module->component, $size];
         }
     }
     return $data;

@@ -29,13 +29,12 @@ require_once('../../config.php');
 require_once($CFG->libdir.'/adminlib.php');
 require_once(dirname(__file__) . '/locallib.php');
 require_login();
-extract(\report_coursesize\local\helper::get_options());
-admin_externalpage_setup('reportcoursesizepage', '', null, '', array('pagelayout' => 'report'));
+admin_externalpage_setup('reportcoursesizepage', '', null, '', ['pagelayout' => 'report']);
 
 require_capability('report/coursesize:view', context_system::instance());
 
 $courseid = required_param('courseid', PARAM_INT);
-$courseshortname = $DB->get_field('course', 'shortname', array('id' => $courseid));
+$courseshortname = $DB->get_field('course', 'shortname', ['id' => $courseid]);
 
 $PAGE->navbar->add($courseshortname);
 
@@ -46,36 +45,36 @@ $dohtml = !$doexcel;
 $filelist = report_coursesize_coursecalc_granular($courseid);
 if ($filelist) {
     $table = new html_table();
-    $table->head = array(
+    $table->head = [
         get_string('granularfilename', 'report_coursesize'),
         get_string('granularfiletype', 'report_coursesize'),
         get_string('granularcomponent', 'report_coursesize'),
         get_string('granularfilearea', 'report_coursesize'),
         get_string('granularusername', 'report_coursesize'),
         get_string('granularfilesize', 'report_coursesize'),
-    );
-    $table->align = array('left', 'left', 'left', 'left', 'left', 'right');
-    $table->data = array();
+    ];
+    $table->align = ['left', 'left', 'left', 'left', 'left', 'right'];
+    $table->data = [];
     foreach ($filelist as $fileinfo) {
         if ($dohtml) {
             // Soft-break long lines on underscores with a zero-width space.
             $fileinfo->filename = str_replace('_', '_&#8203;', $fileinfo->filename);
         }
-        $table->data[] = array(
+        $table->data[] = [
             $fileinfo->filename,
             @array_pop(explode('.', $fileinfo->filename)),
             $fileinfo->component,
             $fileinfo->filearea,
-            $DB->get_field('user', 'username', array('id' => $fileinfo->userid)),
+            $DB->get_field('user', 'username', ['id' => $fileinfo->userid]),
             $doexcel ? $fileinfo->filesize : report_coursesize_displaysize($fileinfo->filesize),
-        );
+        ];
     }
     if ($doexcel) {
         require_once($CFG->libdir . '/excellib.class.php');
         $workbook = new MoodleExcelWorkbook('-');
         $workbook->send('report_coursesize-'.(str_replace('/', '_', $courseshortname).'.xlsx'));
         $worksheet = $workbook->add_worksheet(get_string('pluginname', 'report_coursesize'));
-        foreach (array_merge(array($table->head), $table->data) as $r => $row) {
+        foreach (array_merge([$table->head], $table->data) as $r => $row) {
             foreach ($row as $c => $cell) {
                 if ($c == 5 && $r) {
                     // For the bytes column.

@@ -25,8 +25,9 @@
 
 namespace report_coursesize\task;
 
-defined('MOODLE_INTERNAL') || die;
-
+/**
+ * Task for running the course size calculations periodically.
+ */
 class calculate extends \core\task\scheduled_task {
     /**
      * Get a descriptive name for this task (shown to admins).

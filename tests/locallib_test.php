@@ -17,19 +17,23 @@
 /**
  * Unit tests for report/coursesize/locallib.php.
  *
- * @license http://www.gnu.org/copyleft/gpl.html GNU Public License
+ * @copyright Copyright (c) 2026 Open LMS (https://www.openlms.net)
+ * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  * @package report_coursesize
  */
 
-defined('MOODLE_INTERNAL') || die();
+namespace report_coursesize;
 
-global $CFG;
+/**
+ * Test coverage of locallib.
+ */
+class locallib_test extends advanced_testcase {
 
-// Make sure the code being tested is accessible.
-require_once($CFG->dirroot . '/report/coursesize/locallib.php');
-
-/** This class contains the test cases for the functions in locallib.php. */
-class report_coursesize_locallib_test extends advanced_testcase {
+    protected function setUp(): void {
+        global $CFG;
+        require_once($CFG->dirroot . '/report/coursesize/locallib.php');
+        parent::setUp();
+    }
 
     public function test_cron() {
         $this->resetAfterTest(true);
@@ -63,7 +67,6 @@ class report_coursesize_locallib_test extends advanced_testcase {
 
             $count--;
         }
-
 
         $cronres = report_coursesize_crontask();
         $this->assertTrue($cronres);
@@ -143,7 +146,10 @@ class report_coursesize_locallib_test extends advanced_testcase {
         $this->assertEquals($content, $totalsizenobackups);
     }
 
-    public function createfile($contextid, $component, $filearea) {
+    /**
+     * Helper for creating a generic file to test size calculation with.
+     */
+    private function createfile($contextid, $component, $filearea) {
         static $unique = 0;
         $unique++;
         $fs = get_file_storage();

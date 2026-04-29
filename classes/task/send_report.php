@@ -25,8 +25,9 @@
 
 namespace report_coursesize\task;
 
-defined('MOODLE_INTERNAL') || die;
-
+/**
+ * Task for emailing report results.
+ */
 class send_report extends \core\task\scheduled_task {
     /**
      * Get a descriptive name for this task (shown to admins).

@@ -21,9 +21,6 @@
  * @copyright  Copyright (c) 2021 Open LMS (https://www.openlms.net)
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-
-defined('MOODLE_INTERNAL') || die();
-
 function xmldb_report_coursesize_upgrade($oldversion) {
     global $DB;
 
@@ -40,7 +37,7 @@ function xmldb_report_coursesize_upgrade($oldversion) {
         $table->add_field('filesize', XMLDB_TYPE_INTEGER, '15', null, XMLDB_NOTNULL, null, null);
 
         // Adding keys to table report_coursesize_no_backups.
-        $table->add_key('primary', XMLDB_KEY_PRIMARY, array('id'));
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
 
         // Conditionally launch create table for report_coursesize_no_backups.
         if (!$dbman->table_exists($table)) {

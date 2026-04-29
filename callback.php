@@ -32,7 +32,7 @@ $PAGE->set_context($context);
 
 require_capability('report/coursesize:view', $context);
 
-extract(\report_coursesize\local\helper::get_options());
+$opts = \report_coursesize\local\helper::get_options();
 
 // The column where to insert the granular report icon links if enabled.
 define('REPORT_COURSESIZE_GRANULAR_COL', 2);
@@ -44,7 +44,7 @@ $config = get_config('report_coursesize');
 
 $out = '';
 // Get categories.
-switch($sortorder) {
+switch($opts['sortorder']) {
     case 'salphan':
     case 'salphas':
         $orderby = 'catname';
@@ -60,7 +60,7 @@ switch($sortorder) {
         break;
 }
 
-switch($sortdir) {
+switch($opts['sortdir']) {
     case 'asc':
         $orderby .= ' ASC';
         break;
@@ -88,14 +88,14 @@ $sql .= ' ORDER BY ' . $orderby;
 
 $tout = false;
 $totalsize = 0;
-$params = array('ctxcc' => CONTEXT_COURSECAT, 'id' => $id);
+$params = ['ctxcc' => CONTEXT_COURSECAT, 'id' => $id];
 if ($cats = $DB->get_records_sql($sql, $params)) {
 
     if ($config->calcmethod == 'live') {
         // Re-calculate.
         $dosort = false;
         foreach ($cats as $cat) {
-            $newsize = report_coursesize_catcalc($cat->catid, $excludebackups);
+            $newsize = report_coursesize_catcalc($cat->catid, $opts['excludebackups']);
             if (!$dosort && $cat->filesize != $newsize) {
                 $dosort = true;
             }
@@ -103,35 +103,35 @@ if ($cats = $DB->get_records_sql($sql, $params)) {
         }
 
         // Sort by size manually as we cannot rely on DB sorting with live calculation.
-        if ($dosort && $sortorder == 'ssize') {
-            usort($cats, 'report_coursesize_cmp' . $sortdir);
+        if ($dosort && $opts['sortorder'] == 'ssize') {
+            usort($cats, 'report_coursesize_cmp' . $opts['sortdir']);
         }
     }
 
     foreach ($cats as $cat) {
 
         $table = new html_table();
-        $table->align = array('left', 'left', 'right');
+        $table->align = ['left', 'left', 'right'];
         $table->width = '100%';
-        $table->size = array('22px', '', '130px');
+        $table->size = ['22px', '', '130px'];
         if (!empty($config->showgranular)) {
             // Insert a column into the table.
             array_splice($table->align, REPORT_COURSESIZE_GRANULAR_COL, 0, 'center');
             array_splice($table->size, REPORT_COURSESIZE_GRANULAR_COL, 0, '22px');
         }
-        $table->attributes = array('style' => 'margin-bottom: 0;');
+        $table->attributes = ['style' => 'margin-bottom: 0;'];
         if (!$id && !$tout) {
-            $table->head = array('', get_string('ttitle', 'report_coursesize'), get_string('tsize', 'report_coursesize'));
+            $table->head = ['', get_string('ttitle', 'report_coursesize'), get_string('tsize', 'report_coursesize')];
             if (!empty($config->showgranular)) {
                 array_splice($table->head, REPORT_COURSESIZE_GRANULAR_COL, 0, '');
             }
             $tout = true;
         }
         // Check if category has anything in it.
-        if ($DB->record_exists('course_categories', array('parent' => $cat->catid))) {
+        if ($DB->record_exists('course_categories', ['parent' => $cat->catid])) {
             $hascontent = true;
         } else {
-            if ($DB->record_exists('course', array('category' => $cat->catid))) {
+            if ($DB->record_exists('course', ['category' => $cat->catid])) {
                 $hascontent = true;
             } else {
                 $hascontent = false;
@@ -152,24 +152,24 @@ if ($cats = $DB->get_records_sql($sql, $params)) {
             $pix = new \pix_icon('empty', $expandstr, 'report_coursesize', ['role' => 'button']);
             $icon = $OUTPUT->render($pix);
         }
-        $divicon = html_writer::tag('div', $icon, array('id' => 'icon'.$cat->catid));
+        $divicon = html_writer::tag('div', $icon, ['id' => 'icon'.$cat->catid]);
         $title = html_writer::tag('strong', $cat->catname);
 
-        $rawsize = $excludebackups ? $cat->filesize - $cat->backupsize : $cat->filesize;
+        $rawsize = $opts['excludebackups'] ? $cat->filesize - $cat->backupsize : $cat->filesize;
 
-        $filesize = report_coursesize_displaysize($rawsize, $displaysize);
+        $filesize = report_coursesize_displaysize($rawsize, $opts['displaysize']);
         $size = html_writer::tag('strong', $filesize);
-        $table->data[] = array($divicon, $title, $size);
+        $table->data[] = [$divicon, $title, $size];
         if (!empty($config->showgranular)) {
             array_splice($table->data[key($table->data)], REPORT_COURSESIZE_GRANULAR_COL, 0, '');
         }
         $out .= html_writer::table($table);
-        $out .= html_writer::tag('div', '', array('style' => "display:none", 'id' => 'cat'.$cat->catid));
+        $out .= html_writer::tag('div', '', ['style' => "display:none", 'id' => 'cat'.$cat->catid]);
         $totalsize += $rawsize;
     }
 }
 
-switch($sortorder) {
+switch($opts['sortorder']) {
     case 'salphan':
         $orderby = 'coursename';
         break;
@@ -188,7 +188,7 @@ switch($sortorder) {
         break;
 }
 
-switch($sortdir) {
+switch($opts['sortdir']) {
     case 'asc':
         $orderby .= ' ASC';
         break;
@@ -215,14 +215,14 @@ WHERE
         c.category = :id";
 $sql .= " ORDER BY " . $orderby;
 
-$params = array('ctxc' => CONTEXT_COURSE, 'id' => $id);
+$params = ['ctxc' => CONTEXT_COURSE, 'id' => $id];
 if ($courses = $DB->get_records_sql($sql, $params)) {
 
     if ($config->calcmethod == 'live') {
         report_coursesize_modulecalc();
         $dosort = false;
         foreach ($courses as $course) {
-            $newsize = report_coursesize_coursecalc($course->courseid, $excludebackups);
+            $newsize = report_coursesize_coursecalc($course->courseid, $opts['excludebackups']);
             if (!$dosort && $course->filesize != $newsize) {
                 $dosort = true;
             }
@@ -231,23 +231,23 @@ if ($courses = $DB->get_records_sql($sql, $params)) {
 
         // Sort by size manually as we cannot
         // rely on DB sorting with live calculation.
-        if ($dosort && $sortorder == 'ssize') {
-            usort($courses, 'report_coursesize_cmp' . $sortdir);
+        if ($dosort && $opts['sortorder'] == 'ssize') {
+            usort($courses, 'report_coursesize_cmp' . $opts['sortdir']);
         }
     }
 
     foreach ($courses as $course) {
         $table = new html_table();
-        $table->align = array('left', 'left', 'right');
+        $table->align = ['left', 'left', 'right'];
         $table->width = '100%';
-        $table->size = array('22px', '', '130px');
-        $table->attributes = array('style' => 'margin-bottom: 0;');
-        $title = html_writer::tag('a', $course->coursename . " ({$course->courseshortname})", array(
+        $table->size = ['22px', '', '130px'];
+        $table->attributes = ['style' => 'margin-bottom: 0;'];
+        $title = html_writer::tag('a', $course->coursename . " ({$course->courseshortname})", [
             'href' => $CFG->wwwroot . '/course/view.php?id=' . $course->courseid,
-        ));
-        $rawsize = $excludebackups ? $course->filesize - $course->backupsize : $course->filesize;
-        $size = report_coursesize_displaysize($rawsize, $displaysize);
-        $data = report_coursesize_modulestats($course->courseid, $displaysize, $excludebackups);
+        ]);
+        $rawsize = $opts['excludebackups'] ? $course->filesize - $course->backupsize : $course->filesize;
+        $size = report_coursesize_displaysize($rawsize, $opts['displaysize']);
+        $data = report_coursesize_modulestats($course->courseid, $opts['displaysize'], $opts['excludebackups']);
         $expandstr = get_string('tdtoggle', 'report_coursesize');
         if (!empty($data)) {
             $pix = new \pix_icon('t/switch_plus', $expandstr, 'moodle', ['role' => 'button']);
@@ -263,28 +263,28 @@ if ($courses = $DB->get_records_sql($sql, $params)) {
             $pix = new \pix_icon('empty', $expandstr, 'report_coursesize', ['role' => 'button']);
             $icon = $OUTPUT->render($pix);
         }
-        $divicon = html_writer::tag('div', $icon, array('id' => 'iconcourse'.$course->courseid));
-        $table->data[] = array($divicon, $title, $size);
+        $divicon = html_writer::tag('div', $icon, ['id' => 'iconcourse'.$course->courseid]);
+        $table->data[] = [$divicon, $title, $size];
         if (!empty($config->showgranular)) {
-            $granularicon = $OUTPUT->pix_icon('i/report', '', 'moodle', array(
+            $granularicon = $OUTPUT->pix_icon('i/report', '', 'moodle', [
                 'alt' => get_string('granularlink', 'report_coursesize'),
                 'title' => get_string('granularlink', 'report_coursesize'),
-            ));
-            $granular = html_writer::tag('a', $granularicon, array(
+            ]);
+            $granular = html_writer::tag('a', $granularicon, [
                 'href' => 'granular.php?courseid=' . $course->courseid,
-            ));
+            ]);
             array_splice($table->data[key($table->data)], REPORT_COURSESIZE_GRANULAR_COL, 0, $granular);
             array_splice($table->align, REPORT_COURSESIZE_GRANULAR_COL, 0, 'center');
             array_splice($table->size, REPORT_COURSESIZE_GRANULAR_COL, 0, '22px');
         }
         $out .= html_writer::table($table);
         if (!empty($data)) {
-            $out .= html_writer::start_tag('div', array('style' => "display:none", 'id' => 'course'.$course->courseid));
+            $out .= html_writer::start_tag('div', ['style' => "display:none", 'id' => 'course'.$course->courseid]);
             $table = new html_table();
-            $table->align = array('left', 'left', 'right');
+            $table->align = ['left', 'left', 'right'];
             $table->width = '100%';
-            $table->size = array('22px', '', '130px');
-            $table->attributes = array('style' => 'margin-bottom: 0;');
+            $table->size = ['22px', '', '130px'];
+            $table->attributes = ['style' => 'margin-bottom: 0;'];
             foreach ($data as $row) {
                 $table->data[] = $row;
             }
@@ -296,18 +296,18 @@ if ($courses = $DB->get_records_sql($sql, $params)) {
     }
 }
 
-$out = html_writer::tag('div', $out, array('style' => 'margin-left: 25px;'));
+$out = html_writer::tag('div', $out, ['style' => 'margin-left: 25px;']);
 
 // We are displaying the main table (Moodle root), so let's print some additional info.
 if (!$id) {
     // Get user files.
-    if ($DB->record_exists('report_coursesize', array('contextlevel' => 0, 'instanceid' => 1))) {
-        $row = $DB->get_record('report_coursesize', array('contextlevel' => 0, 'instanceid' => 1));
+    if ($DB->record_exists('report_coursesize', ['contextlevel' => 0, 'instanceid' => 1])) {
+        $row = $DB->get_record('report_coursesize', ['contextlevel' => 0, 'instanceid' => 1]);
         $totalsize += $row->filesize;
         $usersize = $row->filesize;
     } else {
         if ($config->calcmethod == 'live') {
-            $usersize = report_coursesize_usercalc($excludebackups);
+            $usersize = report_coursesize_usercalc($opts['excludebackups']);
             $totalsize += $usersize;
         } else {
             $usersize = 0;
@@ -321,25 +321,27 @@ if (!$id) {
 
     // Output totals.
     $out .= html_writer::empty_tag('br') . html_writer::empty_tag('br');
-    $out .= get_string('userfilesize', 'report_coursesize') . ': ' . report_coursesize_displaysize($usersize, $displaysize);
+    $out .= get_string('userfilesize', 'report_coursesize') . ': '
+        . report_coursesize_displaysize($usersize, $opts['displaysize']);
     $out .= html_writer::empty_tag('br');
-    $out .= get_string('totalfilesize', 'report_coursesize') . ': ' . report_coursesize_displaysize($totalsize, $displaysize);
+    $out .= get_string('totalfilesize', 'report_coursesize') . ': '
+        . report_coursesize_displaysize($totalsize, $opts['displaysize']);
 
     // Get and output total unique file size (may differ from $totalsize since
     // Moodle file storage does not duplicate identical files).
-    if ($DB->record_exists('report_coursesize', array('contextlevel' => 0, 'instanceid' => 2))) {
-        $row = $DB->get_record('report_coursesize', array('contextlevel' => 0, 'instanceid' => 2));
+    if ($DB->record_exists('report_coursesize', ['contextlevel' => 0, 'instanceid' => 2])) {
+        $row = $DB->get_record('report_coursesize', ['contextlevel' => 0, 'instanceid' => 2]);
         $uniquefilesize = $row->filesize;
     } else {
         if ($config->calcmethod == 'live') {
-            $uniquefilesize = report_coursesize_uniquetotalcalc($excludebackups);
+            $uniquefilesize = report_coursesize_uniquetotalcalc($opts['excludebackups']);
         } else {
             $uniquefilesize = 0;
         }
     }
     $out .= html_writer::empty_tag('br');
-    $out .= get_string('uniquefilesize', 'report_coursesize') . ': ' . report_coursesize_displaysize($uniquefilesize, $displaysize);
-
+    $out .= get_string('uniquefilesize', 'report_coursesize') . ': '
+        . report_coursesize_displaysize($uniquefilesize, $opts['displaysize']);
 }
 
 echo json_encode($out);

@@ -19,15 +19,19 @@
  *
  * @package report_coursesize
  * @author Adam Olley <adam.olley@openlms.net>
- * @copyright Copyright (c) 2021 Open LMS (https://www.openlms.net)
+ * @copyright Copyright (c) 2026 Open LMS (https://www.openlms.net)
  * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 namespace report_coursesize\local;
 
-defined('MOODLE_INTERNAL') || die;
-
+/**
+ * General helper functions for report_coursesize.
+ */
 class helper {
+    /**
+     * Get the list of display/sort options based on what a user has selected.
+     */
     public static function get_options() {
         $sortorderdefault = 'ssize';
         $sortdirdefault = 'desc';

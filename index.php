@@ -28,13 +28,13 @@ require_once('../../config.php');
 require_once($CFG->libdir.'/adminlib.php');
 require_once(dirname(__file__) . '/locallib.php');
 require_login();
-extract(\report_coursesize\local\helper::get_options());
-admin_externalpage_setup('reportcoursesizepage', '', null, '', array('pagelayout' => 'report'));
+$opts = \report_coursesize\local\helper::get_options();
+admin_externalpage_setup('reportcoursesizepage', '', null, '', ['pagelayout' => 'report']);
 
 require_capability('report/coursesize:view', context_system::instance());
 
 $config = get_config('report_coursesize');
-if (!empty($export)) {
+if (!empty($opts['export'])) {
     require_once($CFG->libdir.'/csvlib.class.php');
     $csv = new \csv_export_writer();
     $csv->set_filename('report_coursesize_export');
@@ -52,7 +52,7 @@ if (!empty($export)) {
         $head[] = get_string('tsize', 'report_coursesize');
     }
     $csv->add_data($head);
-    $data = report_coursesize_export($displaysize, $sortorder, $sortdir);
+    $data = report_coursesize_export($opts['displaysize'], $opts['sortorder'], $opts['sortdir']);
     if (!empty($data)) {
         foreach ($data as $row) {
             $csv->add_data((array)$row);
@@ -70,36 +70,40 @@ $livecalcenabled = (isset($config->calcmethod) && $config->calcmethod == 'live')
     get_string('enabledcap', 'report_coursesize') : get_string('disabledcap', 'report_coursesize');
 
 echo html_writer::tag('div',
-    get_string('lastcalculated', 'report_coursesize') . $lastruntime, array('style' => 'margin-bottom:10px;'));
+    get_string('lastcalculated', 'report_coursesize') . $lastruntime, ['style' => 'margin-bottom:10px;']);
 echo html_writer::tag('div',
-    get_string('livecalc', 'report_coursesize') . $livecalcenabled, array('style' => 'margin-bottom:10px;'));
+    get_string('livecalc', 'report_coursesize') . $livecalcenabled, ['style' => 'margin-bottom:10px;']);
 
 // Output form.
-$forminputs = array();
-$forminputs[] = get_string('sortby', 'report_coursesize') . html_writer::select($orderoptions, 'sorder', $sortorder, array());
-$forminputs[] = get_string('sortdir', 'report_coursesize') . html_writer::select($diroptions, 'sdir', $sortdir, array());
+$forminputs = [];
+$forminputs[] = get_string('sortby', 'report_coursesize')
+    . html_writer::select($opts['orderoptions'], 'sorder', $opts['sortorder'], []);
+$forminputs[] = get_string('sortdir', 'report_coursesize')
+    . html_writer::select($opts['diroptions'], 'sdir', $opts['sortdir'], []);
 if (empty($config->alwaysdisplaymb)) {
     $forminputs[] = get_string('displaysize', 'report_coursesize') .
-        html_writer::select($sizeoptions, 'display', $displaysize, array());
+        html_writer::select($opts['sizeoptions'], 'display', $opts['displaysize'], []);
 } else {
-    $forminputs[] = html_writer::empty_tag('input', array('type' => 'hidden', 'name' => 'display', 'value' => 'mb' ));
+    $forminputs[] = html_writer::empty_tag('input', ['type' => 'hidden', 'name' => 'display', 'value' => 'mb' ]);
 }
 if (!empty($config->excludebackups)) {
     $forminputs[] = get_string('excludebackup', 'report_coursesize') .
-        html_writer::checkbox("excludebackups", 1, $excludebackups, '');
+        html_writer::checkbox("excludebackups", 1, $opts['excludebackups'], '');
 }
 $forminputs[] = html_writer::empty_tag('input',
-    array('type' => 'submit', 'name' => 'go', 'value' => get_string('refresh')));
+    ['type' => 'submit', 'name' => 'go', 'value' => get_string('refresh')]);
 $forminputs[] = html_writer::empty_tag('input',
-    array('type' => 'submit', 'name' => 'export', 'value' => get_string('export', 'report_coursesize')));
-echo html_writer::start_tag('div', array('style' => 'text-align:center;margin-bottom:10px;'));
+    ['type' => 'submit', 'name' => 'export', 'value' => get_string('export', 'report_coursesize')]);
+echo html_writer::start_tag('div', ['style' => 'text-align:center;margin-bottom:10px;']);
 echo html_writer::start_tag('form',
-    array('name' => 'sortoptions', 'method' => 'POST', 'action' => new moodle_url('/report/coursesize/index.php')));
+    ['name' => 'sortoptions', 'method' => 'POST', 'action' => new moodle_url('/report/coursesize/index.php')]);
 echo implode('&nbsp;&nbsp;&nbsp;', $forminputs);
 echo html_writer::end_tag('form');
 echo html_writer::end_tag('div');
 
-$PAGE->requires->js_call_amd('report_coursesize/catsize', 'init', [$sortorder, $sortdir, $displaysize, $excludebackups]);
-echo html_writer::tag('div', '', array('id' => 'cat0', 'style' => 'display:none;'));
+$PAGE->requires->js_call_amd('report_coursesize/catsize', 'init', [
+    $opts['sortorder'], $opts['sortdir'], $opts['displaysize'], $opts['excludebackups'],
+]);
+echo html_writer::tag('div', '', ['id' => 'cat0', 'style' => 'display:none;']);
 
 echo $OUTPUT->footer();

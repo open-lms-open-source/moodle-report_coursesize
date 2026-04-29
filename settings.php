@@ -32,8 +32,8 @@ $ADMIN->add('reports', new admin_externalpage('reportcoursesizepage', new lang_s
 $settings->add(new admin_setting_configselect('report_coursesize/calcmethod',
     new lang_string('calcmethod', 'report_coursesize'),
     new lang_string('calcmethodhelp', 'report_coursesize'),
-    'cron', array('cron' => new lang_string('calcmethodcron', 'report_coursesize'),
-        'live' => new lang_string('calcmethodlive', 'report_coursesize'))));
+    'cron', ['cron' => new lang_string('calcmethodcron', 'report_coursesize'),
+        'live' => new lang_string('calcmethodlive', 'report_coursesize')]));
 
 $name = new lang_string('showgranular', 'report_coursesize');
 $description = new lang_string('showgranularhelp', 'report_coursesize');

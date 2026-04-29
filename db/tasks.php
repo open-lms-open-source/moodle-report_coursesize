@@ -33,7 +33,7 @@ $tasks = [
         'hour'      => '3',
         'day'       => '*',
         'dayofweek' => '*',
-        'month'     => '*'
+        'month'     => '*',
     ],
     [
         'classname' => 'report_coursesize\task\send_report',
@@ -42,6 +42,6 @@ $tasks = [
         'hour'      => '7',
         'day'       => '*',
         'dayofweek' => '*',
-        'month'     => '*'
+        'month'     => '*',
     ],
 ];
