@@ -55,6 +55,7 @@ if ($filelist) {
     ];
     $table->align = ['left', 'left', 'left', 'left', 'left', 'right'];
     $table->data = [];
+    $userids = [];
     foreach ($filelist as $fileinfo) {
         if ($dohtml) {
             // Soft-break long lines on underscores with a zero-width space.
@@ -65,9 +66,19 @@ if ($filelist) {
             pathinfo($fileinfo->filename, PATHINFO_EXTENSION),
             $fileinfo->component,
             $fileinfo->filearea,
-            $DB->get_field('user', 'username', ['id' => $fileinfo->userid]),
+            $fileinfo->userid, // Username will go here after this loop.
             $doexcel ? $fileinfo->filesize : report_coursesize_displaysize($fileinfo->filesize),
         ];
+        $userids[] = $fileinfo->userid;
+    }
+    // Replace userids with usernames.
+    if (!empty($userids)) {
+        $userlist = $DB->get_records_list('user', 'id', $userids, '', 'id, username');
+        foreach ($table->data as &$row) {
+            if (isset($userlist[$row[4]])) {
+                $row[4] = $userlist[$row[4]]->username;
+            }
+        }
     }
     if ($doexcel) {
         require_once($CFG->libdir . '/excellib.class.php');
