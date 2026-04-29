@@ -810,18 +810,19 @@ function report_coursesize_export($displaysize, $sortorder, $sortdir) {
         }
 
         foreach ($courses as $course) {
-            $url = '=hyperlink("' . $CFG->wwwroot . '/course/view.php?id=' . $course->courseid .
-                '", "' . $course->coursename . '")';
             $totalfilesize = report_coursesize_displaysize($course->filesize, $displaysize);
+            $row = [
+                $categories[$course->coursecategory],
+                $course->courseid,
+                $course->courseshortname,
+                $course->coursename,
+                $totalfilesize,
+            ];
             if (!empty($config->excludebackups)) {
-                $coursefilesize = report_coursesize_displaysize($course->filesize - $course->backupsize, $displaysize);
-                $backupfilesize = report_coursesize_displaysize($course->backupsize, $displaysize);
-                $data['course'][$course->coursecategory][$course->courseid] = array($categories[$course->coursecategory], $url,
-                    $totalfilesize, $coursefilesize, $backupfilesize);
-            } else {
-                $data['course'][$course->coursecategory][$course->courseid] = array($categories[$course->coursecategory], $url,
-                    $totalfilesize);
+                $row[] = report_coursesize_displaysize($course->filesize - $course->backupsize, $displaysize);
+                $row[] = report_coursesize_displaysize($course->backupsize, $displaysize);
             }
+            $data['course'][$course->coursecategory][$course->courseid] = $row;
         }
     }
 

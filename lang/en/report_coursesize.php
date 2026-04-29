@@ -40,7 +40,9 @@ $string['tasksendreport'] = 'Send disk usage report';
 // Table.
 $string['ttitle'] = 'Course Category';
 $string['tcategories'] = 'Full Category';
-$string['tcourse'] = 'Course';
+$string['tcourse'] = 'Course full name';
+$string['tcourseid'] = 'Course ID';
+$string['tcourseshort'] = 'Course short name';
 $string['tsize'] = 'Size';
 $string['tdtoggle'] = 'Toggle';
 $string['tbsize'] = 'Only Course backup size';

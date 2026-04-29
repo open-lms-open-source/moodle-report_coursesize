@@ -38,8 +38,12 @@ if (!empty($export)) {
     require_once($CFG->libdir.'/csvlib.class.php');
     $csv = new \csv_export_writer();
     $csv->set_filename('report_coursesize_export');
-    $head = array(get_string('tcategories', 'report_coursesize'));
-    $head[] = get_string('tcourse', 'report_coursesize');
+    $head = [
+        get_string('tcategories', 'report_coursesize'),
+        get_string('tcourseid', 'report_coursesize'),
+        get_string('tcourseshort', 'report_coursesize'),
+        get_string('tcourse', 'report_coursesize'),
+    ];
     if (!empty($config->excludebackups)) {
         $head[] = get_string('ttsize', 'report_coursesize');
         $head[] = get_string('tcsize', 'report_coursesize');
