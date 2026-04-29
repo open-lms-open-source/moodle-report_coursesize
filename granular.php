@@ -62,7 +62,7 @@ if ($filelist) {
         }
         $table->data[] = [
             s($fileinfo->filename),
-            @array_pop(explode('.', $fileinfo->filename)),
+            pathinfo($fileinfo->filename, PATHINFO_EXTENSION),
             $fileinfo->component,
             $fileinfo->filearea,
             $DB->get_field('user', 'username', ['id' => $fileinfo->userid]),
