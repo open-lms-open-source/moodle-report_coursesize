@@ -271,7 +271,7 @@ if ($courses = $DB->get_records_sql($sql, $params)) {
                 'title' => get_string('granularlink', 'report_coursesize'),
             ]);
             $granular = html_writer::tag('a', $granularicon, [
-                'href' => 'granular.php?courseid=' . $course->courseid,
+                'href' => new moodle_url('/report/coursesize/granular.php', ['courseid' => $course->courseid]),
             ]);
             array_splice($table->data[key($table->data)], REPORT_COURSESIZE_GRANULAR_COL, 0, $granular);
             array_splice($table->align, REPORT_COURSESIZE_GRANULAR_COL, 0, 'center');
