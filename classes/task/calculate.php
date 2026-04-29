@@ -47,7 +47,7 @@ class calculate extends \core\task\scheduled_task {
 
         $config = get_config('report_coursesize');
 
-        if (!$config->calcmethod == 'live') {
+        if ($config->calcmethod == 'live') {
             mtrace("Cron calculations are disabled for report_coursesize, see plugin settings. Aborting.");
             return;
         }
