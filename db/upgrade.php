@@ -72,5 +72,23 @@ function xmldb_report_coursesize_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2021102000, 'report', 'coursesize');
     }
 
+    if ($oldversion < 2026042902) {
+        // Check tables are in the correct state. Other plugin variants had differing schemas (they now mostly match
+        // so if they're uptodate this probably won't do anything).
+        $table = new xmldb_table('report_coursesize_components');
+        if (!$dbman->table_exists($table)) {
+            $dbman->install_one_table_from_xmldb_file(__DIR__.'/install.xml', 'report_coursesize_components');
+        }
+
+        $table = new xmldb_table('report_coursesize');
+        $field = new xmldb_field('contextlevel', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, 50);
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->drop_table($table);
+            $dbman->install_one_table_from_xmldb_file(__DIR__.'/install.xml', 'report_coursesize_components');
+        }
+
+        upgrade_plugin_savepoint(true, 2026042902, 'report', 'coursesize');
+    }
+
     return true;
 }

@@ -20,13 +20,13 @@
  * @package    report
  * @subpackage coursesize
  * @author     Kirill Astashov <kirill.astashov@gmail.com>
- * @copyright  Copyright (c) 2021 Open LMS (https://www.openlms.net)
+ * @copyright  Copyright (c) 2026 Open LMS (https://www.openlms.net)
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 defined('MOODLE_INTERNAL') || die;
 
-$plugin->version   = 2021102000;
-$plugin->release   = '3.9.2';
+$plugin->version   = 2026042902;
+$plugin->release   = '3.9.3';
 $plugin->requires  = 2020061500;
 $plugin->component = 'report_coursesize';
