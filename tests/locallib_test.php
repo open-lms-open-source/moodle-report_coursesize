@@ -27,7 +27,7 @@ namespace report_coursesize;
 /**
  * Test coverage of locallib.
  */
-class locallib_test extends advanced_testcase {
+class locallib_test extends \advanced_testcase {
 
     protected function setUp(): void {
         global $CFG;
