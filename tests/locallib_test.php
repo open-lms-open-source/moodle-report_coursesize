@@ -24,6 +24,9 @@
 
 namespace report_coursesize;
 
+use context_course;
+use context_module;
+
 /**
  * Test coverage of locallib.
  */

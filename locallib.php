@@ -867,6 +867,12 @@ function report_coursesize_modulecalc() {
 
     $data = $DB->get_recordset_sql($sql, $params);
 
+    // No component records at all.
+    if (!$data->valid()) {
+        $DB->delete_records('report_coursesize_components');
+        return true;
+    }
+
     $currentcourseid = null;
     $components = [];
 
@@ -890,11 +896,6 @@ function report_coursesize_modulecalc() {
 
     if ($currentcourseid !== null) {
         report_coursesize_purgeoldcomponents($currentcourseid, $components);
-    }
-
-    // No component records at all.
-    if (empty($data)) {
-        $DB->delete_records('report_coursesize_components');
     }
 
     return true;
