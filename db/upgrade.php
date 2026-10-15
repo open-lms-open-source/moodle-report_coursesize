@@ -84,7 +84,7 @@ function xmldb_report_coursesize_upgrade($oldversion) {
         $field = new xmldb_field('contextlevel', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, 50);
         if (!$dbman->field_exists($table, $field)) {
             $dbman->drop_table($table);
-            $dbman->install_one_table_from_xmldb_file(__DIR__.'/install.xml', 'report_coursesize_components');
+            $dbman->install_one_table_from_xmldb_file(__DIR__.'/install.xml', 'report_coursesize');
         }
 
         upgrade_plugin_savepoint(true, 2026042902, 'report', 'coursesize');
